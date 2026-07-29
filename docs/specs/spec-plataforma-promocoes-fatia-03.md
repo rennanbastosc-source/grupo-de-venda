@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 03 - Pipeline de Scraping de Promoções
 
-> **Feature:** `plataforma-promocoes` | **Status:** `PENDENTE` | **Data:** 2026-07-29
+> **Feature:** `plataforma-promocoes` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-29
 
 <!-- Arquivo: docs/specs/spec-plataforma-promocoes-fatia-03.md -->
 
@@ -80,7 +80,7 @@
 - [ ] **Aceite:** cron protegido rejeita sem secret; 2 fontes no registry; dedupe por `url_canonical`.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** scrapers, offers schema, cron, UI ofertas, testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** scrapers ML+Amazon (+stubs), normalize/dedupe/pipeline, migration offers, cron+API+UI, testes canonicalize/dedupe/cron (29 total)
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`
