@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 04 - Painel de Links Promocionais (Afiliados)
 
-> **Feature:** `plataforma-promocoes` | **Status:** `PENDENTE` | **Data:** 2026-07-29
+> **Feature:** `plataforma-promocoes` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-29
 
 <!-- Arquivo: docs/specs/spec-plataforma-promocoes-fatia-04.md -->
 
@@ -70,7 +70,7 @@
 - [ ] **Aceite:** zero secret no bundle client; falha de provider → `status=failed` + mensagem.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** providers, emit, schema, UI links, testes gate
+- **Status:** `CONCLUÍDO`
+- **Concluído:** migration affiliate_*, adapters template, emit API, UI links + ação em ofertas, assertOfferHasAffiliateLink, testes
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`

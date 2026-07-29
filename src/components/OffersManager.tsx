@@ -31,6 +31,11 @@ export function OffersManager() {
   const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
   const [scrapeMsg, setScrapeMsg] = useState<string | null>(null);
+  const [providers, setProviders] = useState<
+    { id: string; name: string; active: boolean }[]
+  >([]);
+  const [defaultProviderId, setDefaultProviderId] = useState("");
+  const [linkMsg, setLinkMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,6 +61,45 @@ export function OffersManager() {
     }, 0);
     return () => clearTimeout(t);
   }, [load]);
+
+  useEffect(() => {
+    void fetch("/api/affiliate-providers")
+      .then((r) => r.json())
+      .then((d) => {
+        const list = (d.providers ?? []) as {
+          id: string;
+          name: string;
+          active: boolean;
+        }[];
+        setProviders(list);
+        const first = list.find((p) => p.active);
+        if (first) setDefaultProviderId(first.id);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function emitAffiliate(offerId: string) {
+    if (!defaultProviderId) {
+      setLinkMsg("Nenhum provider ativo");
+      return;
+    }
+    setLinkMsg(null);
+    const res = await fetch("/api/affiliate-links", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ offerId, providerId: defaultProviderId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setLinkMsg(data.error || "Falha ao gerar link");
+      return;
+    }
+    if (data.status === "failed") {
+      setLinkMsg(data.error || "Provider falhou");
+      return;
+    }
+    setLinkMsg(`Link: ${data.affiliateUrl}`);
+  }
 
   async function onManual(e: FormEvent) {
     e.preventDefault();
@@ -169,6 +213,29 @@ export function OffersManager() {
           {scrapeMsg}
         </p>
       ) : null}
+      {linkMsg ? (
+        <p className="text-sm text-slate-600" role="status">
+          {linkMsg}
+        </p>
+      ) : null}
+      {providers.some((p) => p.active) ? (
+        <label className="block text-sm">
+          <span className="text-slate-700">Provider afiliado (padrão)</span>
+          <select
+            value={defaultProviderId}
+            onChange={(e) => setDefaultProviderId(e.target.value)}
+            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5"
+          >
+            {providers
+              .filter((p) => p.active)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+          </select>
+        </label>
+      ) : null}
 
       <form
         onSubmit={onManual}
@@ -272,6 +339,13 @@ export function OffersManager() {
                         Rejeitar
                       </button>
                     ) : null}
+                    <button
+                      type="button"
+                      className="text-slate-700 underline"
+                      onClick={() => void emitAffiliate(o.id)}
+                    >
+                      Gerar link afiliado
+                    </button>
                   </td>
                 </tr>
               ))}
