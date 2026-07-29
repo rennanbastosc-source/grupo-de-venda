@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const nav: { href: string; label: string; exact?: boolean }[] = [
   { href: "/dashboard", label: "Overview", exact: true },
+  { href: "/dashboard/bot", label: "Bot" },
   { href: "/dashboard/grupos", label: "Grupos" },
   { href: "/dashboard/ofertas", label: "Ofertas" },
   { href: "/dashboard/links", label: "Links" },

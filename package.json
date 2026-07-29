@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "worker:dev": "npm run dev --prefix worker",
+    "worker:typecheck": "npm run typecheck --prefix worker"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

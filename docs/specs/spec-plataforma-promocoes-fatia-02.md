@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 02 - Grupos WhatsApp + Sessão Baileys
 
-> **Feature:** `plataforma-promocoes` | **Status:** `PENDENTE` | **Data:** 2026-07-29
+> **Feature:** `plataforma-promocoes` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-29
 
 <!-- Arquivo: docs/specs/spec-plataforma-promocoes-fatia-02.md -->
 
@@ -74,7 +74,7 @@
 - [ ] **Aceite:** admin cadastra grupo; vê status Baileys; worker rejeita request sem secret.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** worker Baileys, tabelas, CRUD grupos, UI status/QR, testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** worker Baileys + secret HTTP, migration wa_groups/wa_session, CRUD groups API+UI, bot status/QR, testes groups/session/worker-auth (19 total)
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`
