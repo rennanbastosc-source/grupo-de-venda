@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 01 - Scaffold, Auth Supabase e Shell do Dashboard
 
-> **Feature:** `plataforma-promocoes` | **Status:** `PENDENTE` | **Data:** 2026-07-29
+> **Feature:** `plataforma-promocoes` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-29
 
 <!-- Arquivo: docs/specs/spec-plataforma-promocoes-fatia-01.md -->
 
@@ -62,7 +62,7 @@
 - [ ] **Aceite:** admin logado vê 5 rotas placeholder; visitante não acessa `/dashboard/*`.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** scaffold, auth, shell, schema profiles, testes guard
+- **Status:** `CONCLUÍDO`
+- **Concluído:** scaffold Next+TW4, Supabase SSR auth, shell Sidebar/Header, placeholders 5 rotas, migration profiles, resolveAuthRedirect + 4 testes, typecheck/lint/test/build verdes
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`
