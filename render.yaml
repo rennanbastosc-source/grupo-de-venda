@@ -1,0 +1,26 @@
+# Render Blueprint — worker Baileys (long-running)
+# https://grupo-de-venda-worker.onrender.com
+version: "1"
+services:
+  - type: web
+    name: grupo-de-venda-worker
+    runtime: node
+    repo: https://github.com/rennanbastosc-source/grupo-de-venda
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WHATSAPP_SESSION_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: WORKER_API_SECRET
+        sync: false
+    region: oregon
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    rootDir: worker
