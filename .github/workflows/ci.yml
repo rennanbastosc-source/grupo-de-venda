@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  deployments: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -75,11 +76,10 @@ jobs:
         run: npm ci
 
       - name: Instalar dependências (worker)
-        # next typecheck / imports de testes e paths podem resolver o package worker
         run: npm ci
         working-directory: worker
 
-      - name: Build
+      - name: Build Next (smoke local)
         run: npm run build
 
   security:
@@ -103,3 +103,66 @@ jobs:
       - name: Auditar dependências de produção (worker)
         run: npm audit --omit=dev --audit-level=critical
         working-directory: worker
+
+  # Só sobe se quality + build verdes. Auto-deploy Git da Vercel está desligado.
+  deploy:
+    name: Deploy Vercel (pós-CI)
+    needs: [quality, build]
+    # forks: não deploy (sem secrets)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull env Vercel
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::error::Configure secrets.VERCEL_TOKEN e vars VERCEL_ORG_ID / VERCEL_PROJECT_ID"
+            exit 1
+          fi
+          ENV_NAME=preview
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            ENV_NAME=production
+          fi
+          vercel pull --yes --environment="$ENV_NAME" --token="$VERCEL_TOKEN"
+
+      - name: Build na CI (prebuilt)
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
+          else
+            vercel build --token="$VERCEL_TOKEN"
+          fi
+
+      - name: Deploy prebuilt
+        id: deploy
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          else
+            url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $url"
+
+      - name: URL do deploy
+        run: echo "### Deploy ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
