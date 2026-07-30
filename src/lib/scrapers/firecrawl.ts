@@ -85,6 +85,20 @@ export async function scrapeOffersFromUrl(
       const title = typeof o.title === "string" ? o.title.trim() : "";
       const url = typeof o.url === "string" ? o.url.trim() : "";
       if (!title || !url) continue;
+
+      // ponytail: descarta links institucionais/menus da página
+      const lower = title.toLowerCase();
+      if (
+        lower.includes("já tenho conta") ||
+        lower.includes("sou novo") ||
+        lower.includes("central de privacidade") ||
+        lower.includes("termos de uso") ||
+        lower.includes("minha conta") ||
+        lower.includes("carrinho")
+      ) {
+        continue;
+      }
+
       out.push({
         title: title.slice(0, 240),
         url,

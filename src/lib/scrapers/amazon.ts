@@ -3,10 +3,11 @@ import { scrapeOffersFromUrl } from "./firecrawl";
 
 const DEFAULT_URL =
   process.env.SCRAPE_AMAZON_URL ||
-  "https://www.amazon.com.br/gp/goldbox";
+  "https://www.amazon.com.br/deals";
 
-const PROMPT = `Extraia ofertas da página de ofertas/Goldbox da Amazon Brasil.
-Para cada item: title (nome), url (link absoluto com /dp/ASIN), priceCents (preço em centavos inteiros), imageUrl e externalId (código ASIN de 10 caracteres).
+const PROMPT = `Extraia produtos físicos individuais em promoção na Amazon Brasil.
+Para cada item: title (nome completo do produto), url (link direto do produto contendo /dp/ASIN), priceCents (preço atual em centavos inteiros), imageUrl e externalId (ASIN).
+ATENÇÃO: Ignore categorias de cupons (ex: "15% off em Ferramentas"), links de navegação e banners de departamento. Extraia apenas PRODUTOS FÍSICOS INDIVIDUAIS.
 Máximo 15 itens.`;
 
 async function fetchOffers(): Promise<RawOffer[]> {
