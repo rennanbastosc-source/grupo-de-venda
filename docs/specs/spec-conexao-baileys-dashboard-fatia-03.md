@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 03 - Desconectar, reconectar, hardening e gate de disparos
 
-> **Feature:** `conexao-baileys-dashboard` | **Status:** `PENDENTE` | **Data:** 2026-07-29
+> **Feature:** `conexao-baileys-dashboard` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-29
 
 <!-- Arquivo: docs/specs/spec-conexao-baileys-dashboard-fatia-03.md -->
 
@@ -59,7 +59,7 @@
 - [ ] **Aceite MVP fechado:** painel cobre pair → code+QR → connected → disconnect → reconnect/pair de novo; disparo recusa com mensagem clara se desconectado.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** actions logout/reconnect, UX, gate copy, testes, env example
-- **Próximo comando:** `/sdd-implement`
+- **Status:** `CONCLUÍDO`
+- **Concluído:** logout/reconnect APIs + SessionPanel; gate disparos com copy `/dashboard/bot`; Overview/Dispatch links; `.env.example` + `worker/.env.example`; testes bot-session-actions e dispatch-session-gate
+- **Pendente:** —
+- **Próximo comando:** `/sdd-validate`

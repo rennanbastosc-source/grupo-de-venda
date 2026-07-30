@@ -83,6 +83,20 @@ export async function pairWorkerSession(phone: string) {
   });
 }
 
+export async function logoutWorkerSession() {
+  return workerFetch<{ ok: boolean }>("/session/logout", {
+    method: "POST",
+    body: "{}",
+  });
+}
+
+export async function startWorkerSession() {
+  return workerFetch<{ ok: boolean }>("/session/start", {
+    method: "POST",
+    body: "{}",
+  });
+}
+
 export async function workerSend(input: {
   jid: string;
   text: string;

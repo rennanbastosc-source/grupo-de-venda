@@ -51,7 +51,7 @@ describe("assertSessionConnected", () => {
     });
     const r = await assertSessionConnected();
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toMatch(/qr/);
+    if (!r.ok) expect(r.error).toMatch(/dashboard\/bot/i);
   });
 
   it("ok when connected", async () => {
