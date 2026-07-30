@@ -14,19 +14,21 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
-  SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
-  WORKER_BASE_URL: http://127.0.0.1:3100
-  WORKER_API_SECRET: ci-placeholder-worker-secret
-  CRON_SECRET: ci-placeholder-cron-secret
-
+# Placeholders SÓ em quality/build. Nunca no job deploy:
+# NEXT_PUBLIC_* no env do workflow vaza pro `vercel build --prod` e
+# embute ci.supabase.co no bundle (login de produção quebra).
 jobs:
   quality:
     name: Lint, tipos e testes
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+      WORKER_BASE_URL: http://127.0.0.1:3100
+      WORKER_API_SECRET: ci-placeholder-worker-secret
+      CRON_SECRET: ci-placeholder-cron-secret
 
     steps:
       - name: Checkout
@@ -61,6 +63,13 @@ jobs:
     name: Build de produção
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+      WORKER_BASE_URL: http://127.0.0.1:3100
+      WORKER_API_SECRET: ci-placeholder-worker-secret
+      CRON_SECRET: ci-placeholder-cron-secret
 
     steps:
       - name: Checkout
@@ -146,12 +155,23 @@ jobs:
           vercel pull --yes --environment="$ENV_NAME" --token="$VERCEL_TOKEN"
 
       - name: Build na CI (prebuilt)
+        # Sem NEXT_PUBLIC_* no shell — usa .env do `vercel pull` (prod real).
         run: |
+          unset NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY \
+            WORKER_BASE_URL WORKER_API_SECRET CRON_SECRET || true
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             vercel build --prod --token="$VERCEL_TOKEN"
           else
             vercel build --token="$VERCEL_TOKEN"
           fi
+
+      - name: Guard NEXT_PUBLIC (não embutir CI placeholders)
+        run: |
+          if grep -R --include='*.js' --include='*.html' -l 'ci\.supabase\.co\|ci-placeholder' .vercel/output 2>/dev/null; then
+            echo "::error::Build embutiu placeholder de CI (ci.supabase.co). Abortando deploy."
+            exit 1
+          fi
+          echo "OK: sem placeholders CI no output"
 
       - name: Deploy prebuilt
         id: deploy
