@@ -4,8 +4,9 @@ import { scrapeOffersFromUrl } from "./firecrawl";
 const DEFAULT_URL =
   process.env.SCRAPE_SHOPEE_URL || "https://shopee.com.br/flash_sale";
 
-const PROMPT = `Extraia itens de oferta relâmpago / flash sale da Shopee Brasil.
-Para cada item: title (nome), url (link absoluto do produto), priceCents (preço em centavos inteiros, ex: R$ 49,90 = 4990), imageUrl e externalId (itemid/shopid se visível).
+const PROMPT = `Extraia ofertas da Shopee Brasil.
+Para cada item: title (nome completo), url (link absoluto do produto na Shopee), priceCents (preço em centavos inteiros), imageUrl e externalId.
+Importante: a url de cada produto deve ser a URL inteira real do produto (ex: https://shopee.com.br/nome-do-produto-i.SHOPID.ITEMID), não invente URLs genéricas ou mock.
 Máximo 15 itens.`;
 
 async function fetchOffers(): Promise<RawOffer[]> {
@@ -19,7 +20,14 @@ async function fetchOffers(): Promise<RawOffer[]> {
       },
     ];
   }
-  return scrapeOffersFromUrl(DEFAULT_URL, PROMPT);
+  const offers = await scrapeOffersFromUrl(DEFAULT_URL, PROMPT);
+  // ponytail: filtra URLs genéricas ou mock geradas pelo modelo quando bloqueado
+  return offers.filter(
+    (o) =>
+      !o.url.endsWith("/fone-bluetooth") &&
+      !o.url.endsWith("/smartphone-xyz") &&
+      !o.url.endsWith("/produto1"),
+  );
 }
 
 export const shopeeScraper: Scraper = {
