@@ -166,29 +166,29 @@ export function DispatchManager() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted">
         Disparos exigem WhatsApp conectado.{" "}
         <a
           href="/dashboard/bot"
-          className="font-medium text-slate-900 underline underline-offset-2"
+          className="font-medium text-ink font-bold underline decoration-2 underline-offset-2"
         >
           Gerenciar sessão em Bot
         </a>
       </p>
       <form
         onSubmit={onEnqueue}
-        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4"
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal"
       >
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink">
           Enfileirar disparo
         </h2>
         <label className="block text-sm">
-          <span className="text-slate-700">Oferta aprovada</span>
+          <span className="b-label">Oferta aprovada</span>
           <select
             required
             value={offerId}
             onChange={(e) => setOfferId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           >
             <option value="">Selecione</option>
             {offers.map((o) => (
@@ -199,10 +199,10 @@ export function DispatchManager() {
           </select>
         </label>
         <fieldset className="text-sm">
-          <legend className="text-slate-700">Grupos ativos</legend>
+          <legend className="b-label">Grupos ativos</legend>
           <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
             {groups.length === 0 ? (
-              <p className="text-slate-500">Nenhum grupo ativo.</p>
+              <p className="text-muted">Nenhum grupo ativo.</p>
             ) : (
               groups.map((g) => (
                 <label key={g.id} className="flex items-center gap-2">
@@ -213,7 +213,7 @@ export function DispatchManager() {
                   />
                   <span>
                     {g.name}{" "}
-                    <span className="font-mono text-xs text-slate-400">
+                    <span className="font-mono text-xs text-muted">
                       {g.jid}
                     </span>
                   </span>
@@ -225,7 +225,7 @@ export function DispatchManager() {
         <button
           type="submit"
           disabled={busy || !offerId || groupIds.length === 0}
-          className="w-fit rounded-md bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+          className="w-fit b-btn"
         >
           Enfileirar
         </button>
@@ -233,32 +233,32 @@ export function DispatchManager() {
 
       <form
         onSubmit={onTestSend}
-        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4"
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal"
       >
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink">
           Teste manual
         </h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted">
           Envia texto livre (máx. 200) para o próprio número do bot conectado.
         </p>
         <label className="block text-sm">
-          <span className="text-slate-700">Mensagem</span>
+          <span className="b-label">Mensagem</span>
           <textarea
             value={testText}
             onChange={(e) => setTestText(e.target.value.slice(0, 200))}
             maxLength={200}
             rows={3}
             placeholder="Olá — teste de disparo"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+            className="b-input text-ink"
           />
-          <span className="mt-1 block text-xs text-slate-400">
+          <span className="mt-1 block text-xs text-muted">
             {testText.length}/200
           </span>
         </label>
         <button
           type="submit"
           disabled={testBusy || !testText.trim()}
-          className="w-fit rounded-md bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+          className="w-fit b-btn"
         >
           {testBusy ? "Enviando…" : "Enviar teste"}
         </button>
@@ -266,74 +266,74 @@ export function DispatchManager() {
 
       <form
         onSubmit={saveSettings}
-        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-3"
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-3"
       >
-        <h2 className="text-sm font-semibold text-slate-900 sm:col-span-3">
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink sm:col-span-3">
           Rate limit
           {settings ? (
-            <span className="ml-2 font-normal text-slate-500">
+            <span className="ml-2 font-normal text-muted">
               (atual: {settings.daily_cap}/dia · {settings.hourly_cap}/h ·{" "}
               {settings.min_interval_sec}s)
             </span>
           ) : null}
         </h2>
         <label className="block text-sm">
-          <span className="text-slate-700">Daily cap</span>
+          <span className="b-label">Daily cap</span>
           <input
             type="number"
             min={1}
             value={dailyCap}
             onChange={(e) => setDailyCap(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <label className="block text-sm">
-          <span className="text-slate-700">Hourly cap</span>
+          <span className="b-label">Hourly cap</span>
           <input
             type="number"
             min={1}
             value={hourlyCap}
             onChange={(e) => setHourlyCap(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <label className="block text-sm">
-          <span className="text-slate-700">Intervalo (s)</span>
+          <span className="b-label">Intervalo (s)</span>
           <input
             type="number"
             min={1}
             value={intervalSec}
             onChange={(e) => setIntervalSec(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <button
           type="submit"
           disabled={busy}
-          className="w-fit rounded-md border border-slate-200 px-4 py-2 text-sm sm:col-span-3"
+          className="w-fit b-btn b-btn-ghost sm:col-span-3"
         >
           Salvar limites
         </button>
       </form>
 
       {msg ? (
-        <p className="text-sm text-slate-600" role="status">
+        <p className="text-sm text-muted" role="status">
           {msg}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-danger font-bold" role="alert">
           {error}
         </p>
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
-          <span className="text-slate-700">Status</span>
+          <span className="b-label">Status</span>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5"
+            className="b-input !mt-1 !w-auto"
           >
             <option value="">Todos</option>
             <option value="queued">queued</option>
@@ -344,41 +344,41 @@ export function DispatchManager() {
           </select>
         </label>
         <label className="text-sm">
-          <span className="text-slate-700">Desde (UTC)</span>
+          <span className="b-label">Desde (UTC)</span>
           <input
             type="date"
             value={filterFrom}
             onChange={(e) => setFilterFrom(e.target.value)}
-            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5"
+            className="b-input !mt-1 !w-auto"
           />
         </label>
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-md border border-slate-200 px-3 py-1.5 text-sm"
+          className="b-btn b-btn-ghost !py-1.5"
         >
           Atualizar histórico
         </button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Carregando jobs…</p>
+        <p className="text-sm text-muted">Carregando jobs…</p>
       ) : jobs.length === 0 ? (
-        <p className="text-sm text-slate-500">Fila vazia.</p>
+        <p className="text-sm text-muted">Fila vazia.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto border-[3px] border-ink bg-white shadow-brutal">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="border-b-2 border-ink bg-lime text-ink">
               <tr>
-                <th className="px-3 py-2 font-medium">Oferta</th>
-                <th className="px-3 py-2 font-medium">Grupo</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Erro</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Oferta</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Grupo</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Erro</th>
               </tr>
             </thead>
             <tbody>
               {jobs.map((j) => (
-                <tr key={j.id} className="border-b border-slate-100">
+                <tr key={j.id} className="border-b border-[#e5e5dc]">
                   <td className="px-3 py-2">
                     {j.offers?.title ?? j.id.slice(0, 8)}
                   </td>
@@ -387,20 +387,20 @@ export function DispatchManager() {
                     <span
                       className={
                         j.status === "sent"
-                          ? "text-green-700"
+                          ? "text-ok"
                           : j.status === "failed"
-                            ? "text-red-600"
-                            : "text-slate-700"
+                            ? "text-danger font-bold"
+                            : "text-ink-soft"
                       }
                     >
                       {j.status}
                     </span>
                   </td>
-                  <td className="max-w-xs px-3 py-2 text-xs text-red-600">
+                  <td className="max-w-xs px-3 py-2 text-xs text-danger font-bold">
                     {j.error ? (
                       <button
                         type="button"
-                        className="text-left underline"
+                        className="text-left font-bold underline decoration-2 underline-offset-2"
                         onClick={() =>
                           setExpandedError((cur) =>
                             cur === j.id ? null : j.id,

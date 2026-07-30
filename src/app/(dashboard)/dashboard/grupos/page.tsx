@@ -4,9 +4,12 @@ import { SessionPanel } from "@/components/SessionPanel";
 export default function GruposPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Grupos WhatsApp</h1>
-        <p className="text-sm text-slate-500">
+      <div className="border-b-[3px] border-ink pb-4">
+        <p className="b-label mb-1">Destinos</p>
+        <h1 className="text-2xl font-black uppercase tracking-tight text-ink">
+          Grupos WhatsApp
+        </h1>
+        <p className="mt-0.5 text-sm font-medium text-muted">
           Cadastro de grupos autorizados e status da sessão Baileys.
         </p>
       </div>

@@ -87,45 +87,45 @@ export function GroupsManager() {
     <div className="space-y-6">
       <form
         onSubmit={onCreate}
-        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2"
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-2"
       >
-        <h2 className="sm:col-span-2 text-sm font-semibold text-slate-900">
+        <h2 className="sm:col-span-2 text-sm font-black uppercase tracking-tight text-ink">
           Novo grupo
         </h2>
         <label className="block text-sm">
-          <span className="text-slate-700">Nome</span>
+          <span className="b-label">Nome</span>
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <label className="block text-sm">
-          <span className="text-slate-700">JID</span>
+          <span className="b-label">JID</span>
           <input
             required
             placeholder="120363...@g.us"
             value={jid}
             onChange={(e) => setJid(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
+            className="b-input font-mono text-xs"
           />
         </label>
         <label className="block text-sm">
-          <span className="text-slate-700">Limite diário (opcional)</span>
+          <span className="b-label">Limite diário (opcional)</span>
           <input
             type="number"
             min={1}
             value={dailyLimit}
             onChange={(e) => setDailyLimit(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <div className="flex items-end">
           <button
             type="submit"
             disabled={saving}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-60"
+            className="b-btn"
           >
             {saving ? "Salvando…" : "Cadastrar"}
           </button>
@@ -133,30 +133,30 @@ export function GroupsManager() {
       </form>
 
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-danger font-bold" role="alert">
           {error}
         </p>
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Carregando grupos…</p>
+        <p className="text-sm text-muted">Carregando grupos…</p>
       ) : groups.length === 0 ? (
-        <p className="text-sm text-slate-500">Nenhum grupo cadastrado.</p>
+        <p className="text-sm text-muted">Nenhum grupo cadastrado.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto border-[3px] border-ink bg-white shadow-brutal">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="border-b-2 border-ink bg-lime text-ink">
               <tr>
-                <th className="px-3 py-2 font-medium">Nome</th>
-                <th className="px-3 py-2 font-medium">JID</th>
-                <th className="px-3 py-2 font-medium">Ativo</th>
-                <th className="px-3 py-2 font-medium">Limite</th>
-                <th className="px-3 py-2 font-medium">Ações</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Nome</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">JID</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Ativo</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Limite</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody>
               {groups.map((g) => (
-                <tr key={g.id} className="border-b border-slate-100">
+                <tr key={g.id} className="border-b border-[#e5e5dc]">
                   <td className="px-3 py-2">{g.name}</td>
                   <td className="px-3 py-2 font-mono text-xs">{g.jid}</td>
                   <td className="px-3 py-2">{g.active ? "sim" : "não"}</td>
@@ -165,14 +165,14 @@ export function GroupsManager() {
                     <button
                       type="button"
                       onClick={() => toggleActive(g)}
-                      className="text-slate-700 underline"
+                      className="text-ink-soft font-bold underline decoration-2 underline-offset-2"
                     >
                       {g.active ? "Desativar" : "Ativar"}
                     </button>
                     <button
                       type="button"
                       onClick={() => softDelete(g)}
-                      className="text-red-600 underline"
+                      className="text-danger font-bold underline decoration-2 underline-offset-2"
                     >
                       Desativar (soft)
                     </button>

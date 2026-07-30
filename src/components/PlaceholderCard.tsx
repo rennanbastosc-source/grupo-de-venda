@@ -1,8 +1,10 @@
 export function PlaceholderCard({ title }: { title: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-      <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-      <p className="mt-2 text-sm text-slate-500">Em breve nesta fatia.</p>
+    <div className="border-[3px] border-dashed border-ink bg-white p-10 text-center shadow-brutal">
+      <h2 className="text-lg font-black uppercase tracking-tight text-ink">
+        {title}
+      </h2>
+      <p className="mt-2 text-sm font-medium text-muted">Em breve nesta fatia.</p>
     </div>
   );
 }

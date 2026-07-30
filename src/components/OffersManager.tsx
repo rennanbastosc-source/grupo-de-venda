@@ -163,11 +163,11 @@ export function OffersManager() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
-          <span className="text-slate-700">Status</span>
+          <span className="b-label">Status</span>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5"
+            className="b-input !mt-1 !w-auto"
           >
             <option value="">Todos</option>
             <option value="new">new</option>
@@ -177,11 +177,11 @@ export function OffersManager() {
           </select>
         </label>
         <label className="text-sm">
-          <span className="text-slate-700">Fonte</span>
+          <span className="b-label">Fonte</span>
           <select
             value={source}
             onChange={(e) => setSource(e.target.value)}
-            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5"
+            className="b-input !mt-1 !w-auto"
           >
             <option value="">Todas</option>
             <option value="mercadolivre">mercadolivre</option>
@@ -194,7 +194,7 @@ export function OffersManager() {
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-md border border-slate-200 px-3 py-1.5 text-sm"
+          className="b-btn b-btn-ghost !py-1.5"
         >
           Filtrar
         </button>
@@ -202,29 +202,29 @@ export function OffersManager() {
           type="button"
           disabled={busy}
           onClick={() => void runScrapeNow()}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-60"
+          className="b-btn !py-1.5"
         >
           Rodar scrap agora
         </button>
       </div>
 
       {scrapeMsg ? (
-        <p className="text-sm text-slate-600" role="status">
+        <p className="text-sm text-muted" role="status">
           {scrapeMsg}
         </p>
       ) : null}
       {linkMsg ? (
-        <p className="text-sm text-slate-600" role="status">
+        <p className="text-sm text-muted" role="status">
           {linkMsg}
         </p>
       ) : null}
       {providers.some((p) => p.active) ? (
         <label className="block text-sm">
-          <span className="text-slate-700">Provider afiliado (padrão)</span>
+          <span className="b-label">Provider afiliado (padrão)</span>
           <select
             value={defaultProviderId}
             onChange={(e) => setDefaultProviderId(e.target.value)}
-            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5"
+            className="b-input !mt-1 !w-auto"
           >
             {providers
               .filter((p) => p.active)
@@ -239,43 +239,43 @@ export function OffersManager() {
 
       <form
         onSubmit={onManual}
-        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2"
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-2"
       >
-        <h2 className="text-sm font-semibold text-slate-900 sm:col-span-2">
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink sm:col-span-2">
           Oferta manual
         </h2>
         <label className="block text-sm sm:col-span-2">
-          <span className="text-slate-700">Título</span>
+          <span className="b-label">Título</span>
           <input
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <label className="block text-sm sm:col-span-2">
-          <span className="text-slate-700">URL</span>
+          <span className="b-label">URL</span>
           <input
             required
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <label className="block text-sm">
-          <span className="text-slate-700">Preço (R$)</span>
+          <span className="b-label">Preço (R$)</span>
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <div className="flex items-end">
           <button
             type="submit"
             disabled={busy}
-            className="rounded-md border border-slate-200 px-4 py-2 text-sm"
+            className="b-btn b-btn-ghost"
           >
             Adicionar
           </button>
@@ -283,36 +283,36 @@ export function OffersManager() {
       </form>
 
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-danger font-bold" role="alert">
           {error}
         </p>
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Carregando ofertas…</p>
+        <p className="text-sm text-muted">Carregando ofertas…</p>
       ) : offers.length === 0 ? (
-        <p className="text-sm text-slate-500">Nenhuma oferta.</p>
+        <p className="text-sm text-muted">Nenhuma oferta.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto border-[3px] border-ink bg-white shadow-brutal">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="border-b-2 border-ink bg-lime text-ink">
               <tr>
-                <th className="px-3 py-2 font-medium">Título</th>
-                <th className="px-3 py-2 font-medium">Fonte</th>
-                <th className="px-3 py-2 font-medium">Preço</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Ações</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Título</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Fonte</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Preço</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody>
               {offers.map((o) => (
-                <tr key={o.id} className="border-b border-slate-100">
+                <tr key={o.id} className="border-b border-[#e5e5dc]">
                   <td className="max-w-xs truncate px-3 py-2">
                     <a
                       href={o.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-slate-900 underline"
+                      className="text-ink font-bold underline decoration-2 underline-offset-2"
                     >
                       {o.title}
                     </a>
@@ -324,7 +324,7 @@ export function OffersManager() {
                     {o.status !== "approved" ? (
                       <button
                         type="button"
-                        className="text-green-700 underline"
+                        className="text-ok font-bold underline decoration-2 underline-offset-2"
                         onClick={() => void setOfferStatus(o.id, "approved")}
                       >
                         Aprovar
@@ -333,7 +333,7 @@ export function OffersManager() {
                     {o.status !== "rejected" ? (
                       <button
                         type="button"
-                        className="text-red-600 underline"
+                        className="text-danger font-bold underline decoration-2 underline-offset-2"
                         onClick={() => void setOfferStatus(o.id, "rejected")}
                       >
                         Rejeitar
@@ -341,7 +341,7 @@ export function OffersManager() {
                     ) : null}
                     <button
                       type="button"
-                      className="text-slate-700 underline"
+                      className="text-ink-soft font-bold underline decoration-2 underline-offset-2"
                       onClick={() => void emitAffiliate(o.id)}
                     >
                       Gerar link afiliado
@@ -349,7 +349,7 @@ export function OffersManager() {
                     {o.status === "approved" ? (
                       <a
                         href="/dashboard/disparos"
-                        className="text-slate-700 underline"
+                        className="text-ink-soft font-bold underline decoration-2 underline-offset-2"
                       >
                         Disparar
                       </a>

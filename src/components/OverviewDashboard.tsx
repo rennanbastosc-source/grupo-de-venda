@@ -1,6 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  AlertTriangle,
+  Inbox,
+  Radio,
+  RefreshCw,
+  Send,
+  ShoppingBag,
+  Wifi,
+} from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { MetaProgress } from "@/components/MetaProgress";
 import { SessionBadge } from "@/components/SessionBadge";
@@ -41,12 +50,12 @@ export function OverviewDashboard() {
   if (loading && !stats) {
     return (
       <div className="space-y-4" aria-busy="true">
-        <div className="h-8 w-48 animate-pulse rounded bg-slate-200" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="h-8 w-48 animate-pulse border-2 border-ink bg-ice-deep" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className="h-24 animate-pulse rounded-lg bg-slate-200"
+              className="h-28 animate-pulse border-[3px] border-ink bg-ice-deep shadow-brutal"
             />
           ))}
         </div>
@@ -55,12 +64,15 @@ export function OverviewDashboard() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b-[3px] border-ink pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Overview</h1>
-          <p className="text-sm text-slate-500">
-            KPIs de {stats?.date ?? "—"} (America/Sao_Paulo)
+          <p className="b-label mb-1">Dashboard</p>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-ink">
+            Overview
+          </h1>
+          <p className="mt-0.5 text-sm font-medium text-muted">
+            KPIs de {stats?.date ?? "—"} · America/Sao_Paulo
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -71,28 +83,27 @@ export function OverviewDashboard() {
               setLoading(true);
               void load();
             }}
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm"
+            className="b-btn b-btn-ghost !py-1.5 !text-xs"
           >
+            <RefreshCw className="h-3.5 w-3.5" strokeWidth={2.5} />
             Atualizar
           </button>
         </div>
       </div>
 
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="b-alert b-alert-danger" role="alert">
           {error}
         </p>
       ) : null}
 
       {stats && stats.sessionStatus !== "connected" ? (
-        <p
-          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-          role="alert"
-        >
+        <p className="b-alert b-alert-danger" role="alert">
+          <AlertTriangle className="mr-1 inline h-4 w-4" strokeWidth={2.5} />
           Sessão WhatsApp: {stats.sessionStatus}. Disparos bloqueados.{" "}
           <a
             href="/dashboard/bot"
-            className="font-medium underline underline-offset-2"
+            className="font-extrabold underline decoration-2 underline-offset-2"
           >
             Reconecte em Bot
           </a>
@@ -101,10 +112,7 @@ export function OverviewDashboard() {
       ) : null}
 
       {stats && stats.dispatchesFailed > 0 ? (
-        <p
-          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-          role="status"
-        >
+        <p className="b-alert b-alert-warn" role="status">
           {stats.dispatchesFailed} falha(s) de envio hoje — veja Disparos.
         </p>
       ) : null}
@@ -112,25 +120,29 @@ export function OverviewDashboard() {
       {stats ? (
         <>
           <MetaProgress sent={stats.dispatchesSent} cap={stats.dailyCap} />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <KpiCard
               label="Enviados hoje"
               value={String(stats.dispatchesSent)}
               hint={`Meta ${stats.dailyCap} · hourly ${stats.hourlyCap}`}
+              icon={Send}
             />
             <KpiCard
               label="Falhas hoje"
               value={String(stats.dispatchesFailed)}
               alert={stats.dispatchesFailed > 0}
+              icon={AlertTriangle}
             />
             <KpiCard
               label="Fila pendente"
               value={String(stats.dispatchesQueued)}
               hint="queued + sending"
+              icon={Inbox}
             />
             <KpiCard
               label="Ofertas scrapadas hoje"
               value={String(stats.offersScrapedToday)}
+              icon={ShoppingBag}
             />
             <KpiCard
               label="Sessão Baileys"
@@ -141,16 +153,20 @@ export function OverviewDashboard() {
                   ? "Pronto para disparar"
                   : "Ação em Bot"
               }
+              icon={Wifi}
             />
             <KpiCard
               label="Último erro scrap"
               value={stats.lastScrapeError ? "Sim" : "Nenhum"}
               hint={stats.lastScrapeError ?? "—"}
               alert={Boolean(stats.lastScrapeError)}
+              icon={Radio}
             />
           </div>
           {stats.dispatchesSent === 0 && stats.dispatchesQueued === 0 ? (
-            <p className="text-sm text-slate-500">0 disparos hoje.</p>
+            <p className="border-2 border-dashed border-ink/40 bg-white/60 px-3 py-2 text-sm font-medium text-muted">
+              0 disparos hoje.
+            </p>
           ) : null}
         </>
       ) : null}

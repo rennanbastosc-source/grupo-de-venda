@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { Zap } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 
@@ -39,44 +40,49 @@ function LoginForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      className="w-full max-w-sm space-y-4 border-[3px] border-ink bg-white p-6 shadow-brutal"
     >
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900">Entrar</h1>
-        <p className="text-sm text-slate-500">Admin · single-tenant</p>
+      <div className="flex items-start gap-3 border-b-[3px] border-ink pb-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink bg-lime shadow-brutal-sm">
+          <Zap className="h-5 w-5 text-ink" strokeWidth={2.5} />
+        </span>
+        <div>
+          <h1 className="text-lg font-black uppercase tracking-tight text-ink">
+            Entrar
+          </h1>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted">
+            Admin · single-tenant
+          </p>
+        </div>
       </div>
       <label className="block text-sm">
-        <span className="text-slate-700">E-mail</span>
+        <span className="b-label">E-mail</span>
         <input
           type="email"
           required
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-500"
+          className="b-input"
         />
       </label>
       <label className="block text-sm">
-        <span className="text-slate-700">Senha</span>
+        <span className="b-label">Senha</span>
         <input
           type="password"
           required
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-500"
+          className="b-input"
         />
       </label>
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="b-alert b-alert-danger" role="alert">
           {error}
         </p>
       ) : null}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-      >
+      <button type="submit" disabled={loading} className="b-btn w-full">
         {loading ? "Entrando…" : "Entrar"}
       </button>
     </form>
@@ -85,8 +91,14 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Suspense fallback={<p className="text-sm text-slate-500">Carregando…</p>}>
+    <div className="flex min-h-screen items-center justify-center bg-ice p-4">
+      <Suspense
+        fallback={
+          <p className="text-sm font-bold uppercase tracking-wide text-muted">
+            Carregando…
+          </p>
+        }
+      >
         <LoginForm />
       </Suspense>
     </div>

@@ -177,7 +177,7 @@ export function SessionPanel() {
   }
 
   if (loading && !session) {
-    return <p className="text-sm text-slate-500">Carregando sessão…</p>;
+    return <p className="text-sm text-muted">Carregando sessão…</p>;
   }
 
   const status = session?.status ?? "disconnected";
@@ -196,13 +196,13 @@ export function SessionPanel() {
     !offline;
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
+    <div className="space-y-4 border-[3px] border-ink bg-white p-4 shadow-brutal">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold text-slate-900">
+          <h2 className="text-sm font-black uppercase tracking-tight text-ink">
             Sessão Baileys
           </h2>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
             <SessionBadge status={status} />
             <span>
               {session?.canDispatch
@@ -210,7 +210,7 @@ export function SessionPanel() {
                 : "envios pausados"}
             </span>
             {status === "connected" && session?.phone ? (
-              <span className="font-mono text-slate-800">
+              <span className="font-mono text-ink">
                 {maskPhone(session.phone)}
               </span>
             ) : null}
@@ -222,7 +222,7 @@ export function SessionPanel() {
               type="button"
               disabled={busy}
               onClick={() => void onLogout()}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+              className="b-btn b-btn-danger !py-1.5"
             >
               Desconectar
             </button>
@@ -232,7 +232,7 @@ export function SessionPanel() {
               disabled={busy || offline}
               onClick={() => void onReconnect()}
               title={offline ? "Worker inacessível" : undefined}
-              className="rounded-md border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+              className="b-btn b-btn-ghost !py-1.5 hover:bg-ice-deep disabled:opacity-50"
             >
               Reconectar
             </button>
@@ -240,7 +240,7 @@ export function SessionPanel() {
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50"
+            className="b-btn b-btn-ghost !py-1.5 hover:bg-ice-deep"
           >
             Atualizar
           </button>
@@ -249,7 +249,7 @@ export function SessionPanel() {
 
       {offline ? (
         <p
-          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          className="b-alert b-alert-danger"
           role="alert"
         >
           Worker inacessível — verifique o serviço Baileys (
@@ -258,19 +258,19 @@ export function SessionPanel() {
       ) : null}
 
       {status === "logged_out" ? (
-        <p className="text-sm text-amber-800" role="status">
+        <p className="text-sm text-warn font-bold" role="status">
           Sessão encerrada no aparelho — pareie de novo.
         </p>
       ) : null}
 
       {(error || session?.lastError) && !offline ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-danger font-bold" role="alert">
           {error || session?.lastError}
         </p>
       ) : null}
 
       {expiredArtifacts ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted">
           Código/QR expirado — gere novamente.
         </p>
       ) : null}
@@ -278,10 +278,10 @@ export function SessionPanel() {
       {showForm && (
         <form
           onSubmit={onPair}
-          className="space-y-3 border-t border-slate-100 pt-3"
+          className="space-y-3 border-t border-[#e5e5dc] pt-3"
         >
           <label
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-ink-soft"
             htmlFor="wa-phone"
           >
             WhatsApp disparador
@@ -296,7 +296,7 @@ export function SessionPanel() {
               placeholder="(11) 99999-9999"
               value={phoneInput}
               onChange={(e) => setPhoneInput(e.target.value)}
-              className="min-w-[12rem] flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm"
+              className="b-input !mt-0 min-w-[12rem] flex-1"
               required
               disabled={offline}
             />
@@ -304,12 +304,12 @@ export function SessionPanel() {
               type="submit"
               disabled={pairDisabled}
               title={offline ? "Worker inacessível" : undefined}
-              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="b-btn"
             >
               {pairing ? "Gerando…" : "Gerar código"}
             </button>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             Informe o número com DDD. Usamos o código de 8 dígitos e/ou o QR no
             aparelho.
           </p>
@@ -317,8 +317,8 @@ export function SessionPanel() {
       )}
 
       {showPairingArtifacts && (
-        <div className="space-y-3 border-t border-slate-100 pt-3">
-          <p className="text-sm text-slate-600">
+        <div className="space-y-3 border-t border-[#e5e5dc] pt-3">
+          <p className="text-sm text-muted">
             No celular:{" "}
             <strong>
               WhatsApp → Aparelhos conectados → Conectar um aparelho
@@ -326,16 +326,16 @@ export function SessionPanel() {
             → use o código abaixo ou escaneie o QR.
           </p>
           {session?.pairingCode ? (
-            <div className="rounded-md bg-blue-50 px-4 py-3 text-center ring-1 ring-blue-100">
-              <p className="text-xs font-medium uppercase tracking-wide text-blue-800">
+            <div className="border-[3px] border-ink bg-purple-soft px-4 py-3 text-center shadow-brutal">
+              <p className="b-label text-purple">
                 Código de pareamento
               </p>
-              <p className="mt-1 font-mono text-2xl font-semibold tracking-[0.25em] text-blue-950">
+              <p className="mt-1 font-mono text-2xl font-black tracking-[0.25em] text-ink">
                 {session.pairingCode}
               </p>
             </div>
           ) : status === "qr" || status === "connecting" ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted">
               Aguardando código… (atualiza automaticamente)
             </p>
           ) : null}
@@ -344,7 +344,7 @@ export function SessionPanel() {
             <img
               src={session.qrDataUrl}
               alt="QR code WhatsApp para pareamento"
-              className="mx-auto h-48 w-48 rounded border border-slate-200"
+              className="mx-auto h-48 w-48 rounded border border-ink"
             />
           ) : null}
         </div>

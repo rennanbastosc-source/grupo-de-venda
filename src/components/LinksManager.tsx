@@ -109,36 +109,36 @@ export function LinksManager() {
     <div className="space-y-6">
       <form
         onSubmit={onEmit}
-        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2"
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-2"
       >
-        <h2 className="text-sm font-semibold text-slate-900 sm:col-span-2">
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink sm:col-span-2">
           Emitir link afiliado
         </h2>
         <label className="block text-sm sm:col-span-2">
-          <span className="text-slate-700">URL original</span>
+          <span className="b-label">URL original</span>
           <input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://…"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           />
         </label>
         <label className="block text-sm">
-          <span className="text-slate-700">Offer ID (opcional)</span>
+          <span className="b-label">Offer ID (opcional)</span>
           <input
             value={offerId}
             onChange={(e) => setOfferId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
+            className="b-input font-mono text-xs"
           />
         </label>
         <label className="block text-sm">
-          <span className="text-slate-700">Provider</span>
+          <span className="b-label">Provider</span>
           <select
             required
             value={providerId}
             onChange={(e) => setProviderId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="b-input"
           >
             <option value="" disabled>
               Selecione
@@ -156,7 +156,7 @@ export function LinksManager() {
           <button
             type="submit"
             disabled={busy || !providerId}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+            className="b-btn"
           >
             {busy ? "Emitindo…" : "Emitir"}
           </button>
@@ -164,33 +164,33 @@ export function LinksManager() {
       </form>
 
       {lastUrl ? (
-        <p className="text-sm text-slate-700" role="status">
+        <p className="text-sm text-ink-soft" role="status">
           Link:{" "}
           <button
             type="button"
-            className="font-mono text-xs underline"
+            className="font-mono text-xs font-bold underline decoration-2 underline-offset-2"
             onClick={() => void copyUrl(lastUrl)}
           >
             {lastUrl}
           </button>
           {copied === lastUrl ? (
-            <span className="ml-2 text-green-700">Copiado</span>
+            <span className="ml-2 text-ok">Copiado</span>
           ) : null}
         </p>
       ) : null}
 
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-danger font-bold" role="alert">
           {error}
         </p>
       ) : null}
 
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-slate-900">
+        <h2 className="mb-2 text-sm font-black uppercase tracking-tight text-ink">
           Providers ativos
         </h2>
         {providers.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum provider.</p>
+          <p className="text-sm text-muted">Nenhum provider.</p>
         ) : (
           <ul className="flex flex-wrap gap-2 text-sm">
             {providers.map((p) => (
@@ -198,8 +198,8 @@ export function LinksManager() {
                 key={p.id}
                 className={`rounded-full border px-3 py-1 ${
                   p.active
-                    ? "border-slate-300 bg-white"
-                    : "border-slate-200 text-slate-400 line-through"
+                    ? "border-ink bg-white"
+                    : "border-ink text-muted line-through"
                 }`}
               >
                 {p.name}
@@ -210,24 +210,24 @@ export function LinksManager() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Carregando histórico…</p>
+        <p className="text-sm text-muted">Carregando histórico…</p>
       ) : links.length === 0 ? (
-        <p className="text-sm text-slate-500">Nenhuma emissão.</p>
+        <p className="text-sm text-muted">Nenhuma emissão.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto border-[3px] border-ink bg-white shadow-brutal">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="border-b-2 border-ink bg-lime text-ink">
               <tr>
-                <th className="px-3 py-2 font-medium">Provider</th>
-                <th className="px-3 py-2 font-medium">Original</th>
-                <th className="px-3 py-2 font-medium">Afiliado</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Ações</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Provider</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Original</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Afiliado</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody>
               {links.map((l) => (
-                <tr key={l.id} className="border-b border-slate-100">
+                <tr key={l.id} className="border-b border-[#e5e5dc]">
                   <td className="px-3 py-2">
                     {l.affiliate_providers?.name ?? "—"}
                   </td>
@@ -240,7 +240,7 @@ export function LinksManager() {
                   <td className="px-3 py-2">
                     {l.status}
                     {l.error ? (
-                      <span className="block text-xs text-red-600">
+                      <span className="block text-xs text-danger font-bold">
                         {l.error}
                       </span>
                     ) : null}
@@ -249,7 +249,7 @@ export function LinksManager() {
                     {l.status === "ok" ? (
                       <button
                         type="button"
-                        className="text-slate-700 underline"
+                        className="text-ink-soft font-bold underline decoration-2 underline-offset-2"
                         onClick={() => void copyUrl(l.affiliate_url)}
                       >
                         {copied === l.affiliate_url ? "Copiado" : "Copiar"}
