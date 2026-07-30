@@ -36,6 +36,23 @@ export function OffersManager() {
   >([]);
   const [defaultProviderId, setDefaultProviderId] = useState("");
   const [linkMsg, setLinkMsg] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<
+    { source: string; status: string; lastError: string | null }[]
+  >([]);
+
+  const loadSessions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/scrape/sessions");
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.sessions)) {
+        setSessions(data.sessions);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -152,6 +169,7 @@ export function OffersManager() {
           (data.errors?.length ? ` · erros: ${data.errors.join("; ")}` : ""),
       );
       await load();
+      await loadSessions();
     } catch (e) {
       setScrapeMsg(e instanceof Error ? e.message : "Erro scrape");
     } finally {
@@ -207,6 +225,27 @@ export function OffersManager() {
           Rodar scrap agora
         </button>
       </div>
+
+      {sessions.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs" role="status">
+          <span className="b-label text-ink-soft">Sessões:</span>
+          {sessions.map((s) => (
+            <span
+              key={s.source}
+              className={`border-[2px] border-ink px-2 py-0.5 font-bold uppercase ${
+                s.status === "ok"
+                  ? "bg-lime text-ink"
+                  : s.status === "error" || s.status === "expired"
+                  ? "bg-danger text-white"
+                  : "bg-white text-ink-soft"
+              }`}
+              title={s.lastError || undefined}
+            >
+              {s.source}: {s.status}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {scrapeMsg ? (
         <p className="text-sm text-muted" role="status">

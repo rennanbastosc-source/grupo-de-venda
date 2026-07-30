@@ -1,5 +1,6 @@
 import type { RawOffer, Scraper } from "./types";
 import { scrapeOffersFromUrl } from "./firecrawl";
+import { withSessionRetry } from "./session/ensure";
 
 const DEFAULT_URL =
   process.env.SCRAPE_SHOPEE_URL || "https://shopee.com.br/flash_sale";
@@ -20,13 +21,10 @@ async function fetchOffers(): Promise<RawOffer[]> {
       },
     ];
   }
-  const offers = await scrapeOffersFromUrl(DEFAULT_URL, PROMPT);
-  // ponytail: filtra URLs genéricas ou mock geradas pelo modelo quando bloqueado
-  return offers.filter(
-    (o) =>
-      !o.url.endsWith("/fone-bluetooth") &&
-      !o.url.endsWith("/smartphone-xyz") &&
-      !o.url.endsWith("/produto1"),
+  return withSessionRetry("shopee", (session) =>
+    scrapeOffersFromUrl(DEFAULT_URL, PROMPT, {
+      headers: session.cookieHeader ? { Cookie: session.cookieHeader } : undefined,
+    }),
   );
 }
 

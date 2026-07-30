@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 03 - Shopee ativo + UI de status de sessão
 
-> **Feature:** `scrape-auth-sessao` | **Status:** `PENDENTE` | **Data:** 2026-07-30
+> **Feature:** `scrape-auth-sessao` | **Status:** `EM ANDAMENTO` | **Data:** 2026-07-30
 
 <!-- Arquivo: docs/specs/spec-scrape-auth-sessao-fatia-03.md -->
 
@@ -68,7 +68,7 @@
 - [ ] Checklist finish: invariantes (credenciais/cookies server-only; mock sem login; Shopee ativa com sessão; filtro produto) prontos para `STATE.md`
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** Shopee wire, GET sessions, UI status, testes
-- **Próximo comando:** `/sdd-implement` (após Fatia 03 → `/sdd-validate`)
+- **Status:** `CONCLUÍDO`
+- **Concluído:** Shopee ativa em listActiveScrapeSources(), shopeeScraper com withSessionRetry, GET /api/scrape/sessions (sem vazar cookies), chips de status de sessão no OffersManager, testes de integração API
+- **Pendente:** —
+- **Próximo comando:** `/sdd-validate` (após Fatia 03 → `/sdd-validate`)
