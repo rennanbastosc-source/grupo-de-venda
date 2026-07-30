@@ -37,6 +37,8 @@ export function DispatchManager() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [expandedError, setExpandedError] = useState<string | null>(null);
+  const [testText, setTestText] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,6 +142,28 @@ export function DispatchManager() {
     }
   }
 
+  async function onTestSend(e: FormEvent) {
+    e.preventDefault();
+    setTestBusy(true);
+    setError(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/bot/test-send", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: testText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Falha no teste");
+      setMsg(`Teste enviado para ${data.phone}`);
+      setTestText("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha");
+    } finally {
+      setTestBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-600">
@@ -204,6 +228,39 @@ export function DispatchManager() {
           className="w-fit rounded-md bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
         >
           Enfileirar
+        </button>
+      </form>
+
+      <form
+        onSubmit={onTestSend}
+        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4"
+      >
+        <h2 className="text-sm font-semibold text-slate-900">
+          Teste manual
+        </h2>
+        <p className="text-xs text-slate-500">
+          Envia texto livre (máx. 200) para o próprio número do bot conectado.
+        </p>
+        <label className="block text-sm">
+          <span className="text-slate-700">Mensagem</span>
+          <textarea
+            value={testText}
+            onChange={(e) => setTestText(e.target.value.slice(0, 200))}
+            maxLength={200}
+            rows={3}
+            placeholder="Olá — teste de disparo"
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+          />
+          <span className="mt-1 block text-xs text-slate-400">
+            {testText.length}/200
+          </span>
+        </label>
+        <button
+          type="submit"
+          disabled={testBusy || !testText.trim()}
+          className="w-fit rounded-md bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+        >
+          {testBusy ? "Enviando…" : "Enviar teste"}
         </button>
       </form>
 
