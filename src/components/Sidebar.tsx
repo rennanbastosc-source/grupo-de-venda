@@ -6,7 +6,6 @@ import {
   Bot,
   LayoutDashboard,
   Link2,
-  Megaphone,
   Send,
   Tag,
   Users,
