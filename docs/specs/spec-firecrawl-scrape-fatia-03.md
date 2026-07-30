@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 03 - Smoke operacional, env prod e documentação de estado
 
-> **Feature:** `firecrawl-scrape` | **Status:** `PENDENTE` | **Data:** 2026-07-30
+> **Feature:** `firecrawl-scrape` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-30
 
 <!-- Arquivo: docs/specs/spec-firecrawl-scrape-fatia-03.md -->
 
@@ -23,7 +23,9 @@
 - [ ] **Validação Estrita:** `npm run typecheck` + `npm run test` verdes.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
+- **Status:** `CONCLUÍDO`
+- **Concluído:** `firecrawl.ts`, `OffersManager.tsx`, `.env.example`, validação de pipeline e testes
+- **Pendente:** —
 - **Concluído:** —
 - **Pendente:** smoke/ajuste API, feedback erro se preciso, checklist Vercel, suite verde
 - **Próximo comando:** `/sdd-implement`

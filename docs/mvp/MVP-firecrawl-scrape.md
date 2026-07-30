@@ -24,17 +24,17 @@
 ### 📦 Fatia 01: Client Firecrawl + testes unitários
 - **Objetivo:** Entregar `src/lib/scrapers/firecrawl.ts` (`scrapeOffersFromUrl`), schema fixo, coerção de preço, erros de key/HTTP, cap max 15; suite `tests/firecrawl-scraper.test.ts`; vars documentadas em `.env.example`.
 - **Dependências:** Nenhuma (API externa mockada nos testes)
-- **Status:** `EM ANDAMENTO`
+- **Status:** `CONCLUÍDO`
 
 ### 📦 Fatia 02: Wire ML, Amazon e Shopee no pipeline
 - **Objetivo:** Reescrever scrapers ML/Amazon para usar Firecrawl; implementar Shopee real; registry com 3 fontes ativas; Magalu stub; manter mock path; typecheck + testes de dedupe/pipeline verdes.
 - **Dependências:** Fatia 01
-- **Status:** `PENDENTE`
+- **Status:** `CONCLUÍDO`
 
 ### 📦 Fatia 03: Smoke operacional, env prod e documentação de estado
 - **Objetivo:** Validar extract real (opcional, 1 fonte) ou documentar path API v1/v2 se divergir; garantir botão/cron de scrape alimenta dashboard; checklist Vercel `FIRECRAWL_API_KEY`; preparar invariantes para `STATE.md` (append no finish). UI: feedback mínimo se scrape falhar por key (mensagem de erro já no fluxo de run, sem redesign).
 - **Dependências:** Fatia 02
-- **Status:** `PENDENTE`
+- **Status:** `CONCLUÍDO`
 
 ## 3. Invariantes & Riscos Identificados
 - **Invariante 1:** `FIRECRAWL_API_KEY` nunca vai para o client bundle nem para o git.
