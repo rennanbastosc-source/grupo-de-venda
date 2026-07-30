@@ -346,6 +346,14 @@ export function OffersManager() {
                     >
                       Gerar link afiliado
                     </button>
+                    {o.status === "approved" ? (
+                      <a
+                        href="/dashboard/disparos"
+                        className="text-slate-700 underline"
+                      >
+                        Disparar
+                      </a>
+                    ) : null}
                   </td>
                 </tr>
               ))}

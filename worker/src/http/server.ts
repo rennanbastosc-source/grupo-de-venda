@@ -12,6 +12,17 @@ function readUrl(req: IncomingMessage) {
   return new URL(req.url || "/", "http://localhost");
 }
 
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
+const sentJobIds = new Set<string>();
+
 export function createWorkerServer() {
   return createServer(async (req, res) => {
     const url = readUrl(req);
@@ -58,6 +69,42 @@ export function createWorkerServer() {
         });
       });
       return json(res, 202, { ok: true });
+    }
+
+    if (method === "POST" && url.pathname === "/send") {
+      const s = getSessionState();
+      if (s.status !== "connected") {
+        return json(res, 409, {
+          error: `session ${s.status}`,
+        });
+      }
+      let body: { jid?: string; text?: string; jobId?: string };
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        return json(res, 400, { error: "JSON inválido" });
+      }
+      const jid = typeof body.jid === "string" ? body.jid.trim() : "";
+      const text = typeof body.text === "string" ? body.text : "";
+      if (!jid || !text) {
+        return json(res, 400, { error: "jid e text obrigatórios" });
+      }
+      if (body.jobId && sentJobIds.has(body.jobId)) {
+        return json(res, 200, { ok: true, jobId: body.jobId, deduped: true });
+      }
+      const sock = getSocket();
+      if (!sock) {
+        return json(res, 503, { error: "socket indisponível" });
+      }
+      try {
+        await sock.sendMessage(jid, { text });
+        if (body.jobId) sentJobIds.add(body.jobId);
+        return json(res, 200, { ok: true, jobId: body.jobId });
+      } catch (e) {
+        return json(res, 500, {
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
     }
 
     return json(res, 404, { error: "not found" });

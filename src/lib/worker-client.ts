@@ -63,3 +63,14 @@ export async function getWorkerSession() {
 export async function getWorkerQr() {
   return workerFetch<WorkerQr>("/session/qr");
 }
+
+export async function workerSend(input: {
+  jid: string;
+  text: string;
+  jobId?: string;
+}) {
+  return workerFetch<{ ok: boolean; jobId?: string }>("/send", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}

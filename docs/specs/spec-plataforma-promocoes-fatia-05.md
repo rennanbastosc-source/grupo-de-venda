@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 05 - Disparo em Grupos (Fila + Rate Limit)
 
-> **Feature:** `plataforma-promocoes` | **Status:** `PENDENTE` | **Data:** 2026-07-29
+> **Feature:** `plataforma-promocoes` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-29
 
 <!-- Arquivo: docs/specs/spec-plataforma-promocoes-fatia-05.md -->
 
@@ -80,7 +80,7 @@
 - [ ] **Aceite:** impossível enviar URL crua; impossível enviar a grupo inativo; caps não contornáveis via API.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** fila, guards, rate limit, worker send, UI disparos, testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** dispatch_jobs + settings, enqueue/guards/rate/process, worker POST /send, cron dispatch, UI disparos, testes
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`
