@@ -97,6 +97,60 @@ describe("crypto session", () => {
   });
 });
 
+describe("createAuthState load guard", () => {
+  const deps = {
+    initAuthCreds: () => ({ account: null, me: null, _fresh: true }),
+    BufferJSON: {
+      replacer: (_k: string, v: unknown) => v,
+      reviver: (_k: string, v: unknown) => v,
+    },
+    proto: { Message: { AppStateSyncKeyData: { fromObject: (v: unknown) => v } } },
+    useMultiFileAuthState: async () => ({
+      state: { creds: {}, keys: {} },
+      saveCreds: async () => {},
+    }),
+  };
+
+  it("falha de REST não vira creds frescas (não sobrescreve)", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role";
+    const key = randomBytes(32).toString("base64");
+    const prev = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          code: "PGRST205",
+          message: "Could not find the table 'public.wa_session_keys'",
+        }),
+        { status: 404 },
+      ) as Response;
+    try {
+      const { createAuthState } = await import("../worker/src/baileys/auth-state");
+      await expect(createAuthState(deps, key)).rejects.toThrow(/Supabase REST 404/);
+    } finally {
+      globalThis.fetch = prev;
+    }
+  });
+
+  it("payload ilegível não vira creds frescas", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role";
+    const key = randomBytes(32).toString("base64");
+    const prev = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify([{ value: "not.a.valid.blob" }]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }) as Response;
+    try {
+      const { createAuthState } = await import("../worker/src/baileys/auth-state");
+      await expect(createAuthState(deps, key)).rejects.toThrow(/ilegíveis/);
+    } finally {
+      globalThis.fetch = prev;
+    }
+  });
+});
+
 describe("worker HTTP pair/session contract", () => {
   it("401 sem secret; pair 400/202; session campos", async () => {
     process.env.WORKER_API_SECRET = "test-secret-lifecycle";

@@ -105,18 +105,25 @@ export async function createAuthState(
 
   const rowId = (type: string, id: string) => `${type}:${id}`;
 
+  // Nunca engolir erro de load com initAuthCreds: saveCreds seguinte
+  // sobrescreve sessão pareada (sintoma: "conta some após deploy").
+  const rows = (await rest(
+    "GET",
+    `wa_session_keys?id=eq.${encodeURIComponent(CREDS_ID)}&select=value`,
+    undefined,
+    { Prefer: "return=representation" },
+  )) as { value: string }[] | null;
   let creds: AuthenticationCredsLike;
-  try {
-    const rows = (await rest(
-      "GET",
-      `wa_session_keys?id=eq.${encodeURIComponent(CREDS_ID)}&select=value`,
-      undefined,
-      { Prefer: "return=representation" },
-    )) as { value: string }[] | null;
-    creds = rows?.[0]?.value
-      ? (decode(rows[0].value) as AuthenticationCredsLike)
-      : deps.initAuthCreds();
-  } catch {
+  if (rows?.[0]?.value) {
+    try {
+      creds = decode(rows[0].value) as AuthenticationCredsLike;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new Error(
+        `Creds WA ilegíveis (WHATSAPP_SESSION_KEY errada ou payload corrompido). Não sobrescrevendo. ${msg}`,
+      );
+    }
+  } else {
     creds = deps.initAuthCreds();
   }
 
@@ -167,7 +174,7 @@ export async function createAuthState(
         }
         for (let i = 0; i < upserts.length; i += LOTE) {
           const lote = upserts.slice(i, i + LOTE);
-          await rest("POST", "wa_session_keys", lote, {
+          await rest("POST", "wa_session_keys?on_conflict=id", lote, {
             Prefer: "resolution=merge-duplicates,return=minimal",
           });
         }
@@ -184,7 +191,7 @@ export async function createAuthState(
     saveCreds: async () => {
       await rest(
         "POST",
-        "wa_session_keys",
+        "wa_session_keys?on_conflict=id",
         [
           {
             id: CREDS_ID,
