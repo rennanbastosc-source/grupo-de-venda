@@ -1,13 +1,21 @@
 # Render Blueprint — worker Baileys (long-running)
-# https://grupo-de-venda-worker.onrender.com
-version: "1"
+# Serviço: https://grupo-de-venda-worker.onrender.com
+# Padrão frota-impacto: autoDeploy on commit + secrets via dashboard (sync: false).
 services:
   - type: web
     name: grupo-de-venda-worker
-    runtime: node
-    repo: https://github.com/rennanbastosc-source/grupo-de-venda
+    env: node
     plan: free
+    region: oregon
+    numInstances: 1
+    rootDir: worker
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
+      - key: NODE_VERSION
+        value: "24"
       - key: NODE_ENV
         value: production
       - key: WHATSAPP_SESSION_KEY
@@ -18,9 +26,3 @@ services:
         sync: false
       - key: WORKER_API_SECRET
         sync: false
-    region: oregon
-    buildCommand: npm ci
-    startCommand: npm start
-    healthCheckPath: /health
-    autoDeployTrigger: commit
-    rootDir: worker
