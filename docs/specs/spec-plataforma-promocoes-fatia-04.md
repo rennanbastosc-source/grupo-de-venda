@@ -73,4 +73,10 @@
 - **Status:** `CONCLUÍDO`
 - **Concluído:** migration affiliate_*, adapters template, emit API, UI links + ação em ofertas, assertOfferHasAffiliateLink, testes
 - **Pendente:** —
-- **Próximo comando:** `/sdd-implement`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- Tables `affiliate_providers`, `affiliate_links`; seed generic/livelo/meliuz (template URL).
+- `emitAffiliateLink` + `assertOfferHasAffiliateLink` (gate fatia 05).
+- APIs `/api/affiliate-providers`, `/api/affiliate-links`; UI `LinksManager` + ação em ofertas.
+- APIs reais Livelo/Méliuz adiado (`ponytail:`) até credenciais.

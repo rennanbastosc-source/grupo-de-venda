@@ -81,6 +81,11 @@
 
 ## 6. Checkpoint de Execução
 - **Status:** `CONCLUÍDO`
-- **Concluído:** scrapers ML+Amazon (+stubs), normalize/dedupe/pipeline, migration offers, cron+API+UI, testes canonicalize/dedupe/cron (29 total)
+- **Concluído:** scrapers ML+Amazon (+stubs), normalize/dedupe/pipeline, migration offers, cron+API+UI, testes canonicalize/dedupe/cron
 - **Pendente:** —
-- **Próximo comando:** `/sdd-implement`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- Tables `offers`, `scrape_runs`; statuses `new|approved|rejected|sent`.
+- `src/lib/scrapers/*` (ML+Amazon ativos; shopee/magalu stub); `SCRAPE_MOCK=1` para dev.
+- `GET /api/cron/scrape` + `POST /api/scrape/run`; UI `OffersManager`.

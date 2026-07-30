@@ -75,6 +75,12 @@
 
 ## 6. Checkpoint de Execução
 - **Status:** `CONCLUÍDO`
-- **Concluído:** worker Baileys + secret HTTP, migration wa_groups/wa_session, CRUD groups API+UI, bot status/QR, testes groups/session/worker-auth (19 total)
+- **Concluído:** worker Baileys + secret HTTP, migration wa_groups/wa_session, CRUD groups API+UI, bot status/QR, testes groups/session/worker-auth
 - **Pendente:** —
-- **Próximo comando:** `/sdd-implement`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- Package `worker/` separado (`@whiskeysockets/baileys`); HTTP secret `x-worker-secret`.
+- Endpoints worker: `/session`, `/session/qr`, `/session/start|logout`, `/send` (fatia 05).
+- App: `GET /api/bot/status|qr` proxy; `GET/POST /api/groups`, `PATCH/DELETE /api/groups/[id]`.
+- UI: `SessionPanel`, `GroupsManager`; `canDispatch` só se `connected`.

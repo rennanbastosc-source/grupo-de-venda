@@ -65,4 +65,10 @@
 - **Status:** `CONCLUÍDO`
 - **Concluído:** scaffold Next+TW4, Supabase SSR auth, shell Sidebar/Header, placeholders 5 rotas, migration profiles, resolveAuthRedirect + 4 testes, typecheck/lint/test/build verdes
 - **Pendente:** —
-- **Próximo comando:** `/sdd-implement`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- Next.js 16 App Router + Tailwind 4; `@supabase/ssr` server/client/middleware.
+- Rotas: `/login`, `/dashboard/*` (shell `DashboardShell` + `Sidebar` + `Header`).
+- Migration `001_profiles.sql`; env `NEXT_PUBLIC_SUPABASE_*`.
+- Deploy Vercel (prod); worker excluído do `tsconfig` Next.

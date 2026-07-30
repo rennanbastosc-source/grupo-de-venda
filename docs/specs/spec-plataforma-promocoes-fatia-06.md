@@ -67,4 +67,10 @@
 - **Status:** `CONCLUÍDO`
 - **Concluído:** overview API/KPIs, meta progress, filtros histórico disparos, testes agregação
 - **Pendente:** —
-- **Próximo comando:** `/sdd-validate`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- `GET /api/stats/overview` + `getOverviewStats` (dia America/Sao_Paulo).
+- UI `OverviewDashboard` (MetaProgress, KpiCard, SessionBadge, poll 30s).
+- Histórico disparos: filtros status/`from`; erro expandível.
+- Validação feature: tsc/lint/test/worker tsc/build verdes; E2E Playwright não no repo.

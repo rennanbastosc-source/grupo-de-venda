@@ -83,4 +83,10 @@
 - **Status:** `CONCLUÍDO`
 - **Concluído:** dispatch_jobs + settings, enqueue/guards/rate/process, worker POST /send, cron dispatch, UI disparos, testes
 - **Pendente:** —
-- **Próximo comando:** `/sdd-implement`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- Tables `app_settings` (daily 35 / hourly 10 / interval 45s), `dispatch_jobs` + unique partial sent/dia.
+- Guards: sessão connected, grupo active, affiliate ok, no re-queue mesmo dia.
+- `processDispatchQueue` via `GET/POST /api/cron/dispatch`; worker `POST /send` com dedupe `jobId`.
+- UI `DispatchManager` (enqueue + caps + histórico).
