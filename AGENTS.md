@@ -75,8 +75,33 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
+## 5. Git — política de operações
 
-## Layout
+**Duas vias de autorização — commit, push e merge/squash exigem UMA delas:**
+
+1. **Pedido explícito do usuário.** "commita", "faz o push", "pode mergear". Um "vai commitando" vale até o fim da sessão.
+2. **Invocação de uma skill que codifica o passo.** Chamar `/sdd-implement` ou `/sdd-finish` **é** a autorização para os passos de git que aquele procedimento descreve — não peça confirmação de novo. O usuário já autorizou ao invocar; represar ali só transforma um fluxo codificado em pergunta redundante.
+
+O que NÃO muda com isso:
+
+- **Validação continua sendo pré-requisito, não formalidade.** Nada é commitado sem tsc + lint + testes verdes (regra de entrega no `AGENTS.md`); nenhuma PR é mergeada sem o loop de escopo Feature verde. A skill autoriza o git, não dispensa o portão.
+- **Merge exige o schema JÁ aplicado na produção.** Push em `master` é deploy imediato: mergear com migração aditiva só na staging põe no ar código que lê coluna inexistente. Antes do merge: `assert-db-env.sh production` → `db push` → `migrate diff` vazio. Isso é gate técnico, não de permissão — nenhuma skill o dispensa.
+- **Operação de escrita direta no banco de produção segue exigindo pedido explícito** (§8). Skill não cobre isso.
+- **Push em `master` = deploy imediato** — agrupe commits pequenos (docs, ajustes) num push só quando possível.
+- Mensagens: conventional commits em PT-BR (`fix:`, `feat:`, `docs:`), corpo explicando o porquê.
+
+## 6. Deploy (dois caminhos — não misturar)
+
+| Alvo | Como |
+|------|------|
+| **App (Vercel)** | Auto-deploy Git **desligado** (`vercel.json`). CI job `Deploy Vercel (pós-CI)`: `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`. |
+| **Worker (Render)** | Blueprint `render.yaml`, `rootDir: worker`, `autoDeploy: true`. GitHub App precisa de acesso ao repo (log limpo: `Cloning from…` **sem** “don't have access”). |
+
+- Push que só mexe fora de `worker/` **não** redeploya o worker (`rootDir`).
+- Render ≠ Vercel: CI Actions não controla o worker.
+
+
+## 7. Layout
 
 | Path | Role |
 |------|------|
@@ -88,7 +113,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 `tsconfig` da app **exclui** `worker` e `tests` — typecheck do worker: `npm run worker:typecheck`.
 
-## Commands
+## 8. Commands
 
 ```bash
 npm run dev                 # Next :3000
@@ -103,7 +128,7 @@ npm run build
 
 Ordem CI: lint → typecheck (app+worker) → test → build smoke → (main) deploy Vercel.
 
-## Auth / env
+## 9. Auth / env
 
 - Login: Supabase e-mail+senha (`src/app/login`), single-tenant admin.
 - App: `.env.local` — ver `.env.example`.
@@ -111,7 +136,7 @@ Ordem CI: lint → typecheck (app+worker) → test → build smoke → (main) de
 - Mesmo `WORKER_API_SECRET` no app e no worker; header `x-worker-secret`.
 - Cron: `CRON_SECRET` (Bearer ou `x-cron-secret`).
 
-## Baileys / sessão WA (crítico)
+## 10. Baileys / sessão WA (crítico)
 
 - Persistência: `wa_session_keys` cifrado (`worker/src/baileys/auth-state.ts`).
 - Gate de sessão: `creds.account` (não `me`).
@@ -120,27 +145,18 @@ Ordem CI: lint → typecheck (app+worker) → test → build smoke → (main) de
 - Logout / `loggedOut` → `clearAuth` (DELETE keys).
 - Status runtime em memória no worker; UI poll ~4s em `/dashboard/bot`.
 
-## Deploy (dois caminhos — não misturar)
 
-| Alvo | Como |
-|------|------|
-| **App (Vercel)** | Auto-deploy Git **desligado** (`vercel.json`). CI job `Deploy Vercel (pós-CI)`: `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`. |
-| **Worker (Render)** | Blueprint `render.yaml`, `rootDir: worker`, `autoDeploy: true`. GitHub App precisa de acesso ao repo (log limpo: `Cloning from…` **sem** “don't have access”). |
-
-- Push que só mexe fora de `worker/` **não** redeploya o worker (`rootDir`).
-- Render ≠ Vercel: CI Actions não controla o worker.
-
-### Armadilha CI / login produção
+### 11. Armadilha CI / login produção
 
 Placeholders `NEXT_PUBLIC_SUPABASE_*=https://ci.supabase.co` **só** nos jobs `quality`/`build`. **Nunca** no job `deploy` nem como `env:` global do workflow — o shell vaza pro `vercel build` e embute `ci.supabase.co` no bundle (login quebra). Há guard `grep` no output antes do deploy.
 
-## Infra CLI (obrigatório)
+## 12. Infra CLI (obrigatório)
 
 - **Vercel** / **Neon**: sempre CLI (`vercel`, `neonctl`/`neon`) se resolver; não mandar só painel.
 - Auth interativa CLI: expor URL/código e aguardar.
 - Render: CLI `render` (services, deploys, logs). Blueprint sync via dashboard se API não criar.
 
-## Domínio (invariantes)
+## 13. Domínio (invariantes)
 
 - Disparo: sessão WA `connected` + grupo `active` + `affiliate_links` status `ok`; rate limits em `app_settings`; sem reenvio offer+group no mesmo dia UTC.
 - Secrets só server/env — nunca client.
