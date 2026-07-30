@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+  WORKER_BASE_URL: http://127.0.0.1:3100
+  WORKER_API_SECRET: ci-placeholder-worker-secret
+  CRON_SECRET: ci-placeholder-cron-secret
+
+jobs:
+  quality:
+    name: Lint, tipos e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências (app)
+        run: npm ci
+
+      - name: Instalar dependências (worker)
+        run: npm ci
+        working-directory: worker
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript (app)
+        run: npm run typecheck
+
+      - name: TypeScript (worker)
+        run: npm run worker:typecheck
+
+      - name: Testes
+        run: npm run test
+
+  build:
+    name: Build de produção
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  security:
+    name: Vulnerabilidades críticas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Auditar dependências de produção (app)
+        run: npm audit --omit=dev --audit-level=critical
+
+      - name: Auditar dependências de produção (worker)
+        run: npm audit --omit=dev --audit-level=critical
+        working-directory: worker
