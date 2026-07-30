@@ -1,6 +1,7 @@
 import { amazonScraper } from "./amazon";
 import { mercadolivreScraper } from "./mercadolivre";
-import { magaluScraper, shopeeScraper } from "./stubs";
+import { shopeeScraper } from "./shopee";
+import { magaluScraper } from "./stubs";
 import type { ScrapeSource, Scraper } from "./types";
 
 const scrapers: Scraper[] = [
@@ -17,8 +18,7 @@ export function getScraper(source: Exclude<ScrapeSource, "manual">): Scraper {
 }
 
 export function listActiveScrapeSources(): Exclude<ScrapeSource, "manual">[] {
-  // MVP: only fully implemented sources run by default
-  return ["mercadolivre", "amazon"];
+  return ["mercadolivre", "amazon", "shopee"];
 }
 
 export function listAllScrapeSources(): Exclude<ScrapeSource, "manual">[] {
