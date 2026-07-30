@@ -18,7 +18,7 @@ export function getScraper(source: Exclude<ScrapeSource, "manual">): Scraper {
 }
 
 export function listActiveScrapeSources(): Exclude<ScrapeSource, "manual">[] {
-  return ["mercadolivre", "amazon", "shopee"];
+  return ["mercadolivre", "amazon"];
 }
 
 export function listAllScrapeSources(): Exclude<ScrapeSource, "manual">[] {
