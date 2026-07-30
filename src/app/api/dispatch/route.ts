@@ -8,6 +8,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
+  const from = searchParams.get("from");
 
   let q = auth.supabase
     .from("dispatch_jobs")
@@ -18,6 +19,9 @@ export async function GET(request: Request) {
     .limit(100);
 
   if (status) q = q.eq("status", status);
+  if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    q = q.gte("created_at", `${from}T00:00:00.000Z`);
+  }
 
   const { data, error } = await q;
   if (error) {

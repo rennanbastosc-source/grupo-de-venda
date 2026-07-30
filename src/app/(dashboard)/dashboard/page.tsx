@@ -1,5 +1,5 @@
-import { PlaceholderCard } from "@/components/PlaceholderCard";
+import { OverviewDashboard } from "@/components/OverviewDashboard";
 
 export default function OverviewPage() {
-  return <PlaceholderCard title="Overview" />;
+  return <OverviewDashboard />;
 }

@@ -34,15 +34,21 @@ export function DispatchManager() {
   const [dailyCap, setDailyCap] = useState("35");
   const [hourlyCap, setHourlyCap] = useState("10");
   const [intervalSec, setIntervalSec] = useState("45");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [expandedError, setExpandedError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const qs = new URLSearchParams();
+      if (filterStatus) qs.set("status", filterStatus);
+      if (filterFrom) qs.set("from", filterFrom);
       const [oRes, gRes, jRes, sRes] = await Promise.all([
         fetch("/api/offers?status=approved"),
         fetch("/api/groups"),
-        fetch("/api/dispatch"),
+        fetch(`/api/dispatch?${qs}`),
         fetch("/api/settings"),
       ]);
       const oData = await oRes.json();
@@ -66,7 +72,7 @@ export function DispatchManager() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filterStatus, filterFrom]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -255,6 +261,40 @@ export function DispatchManager() {
         </p>
       ) : null}
 
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">
+          <span className="text-slate-700">Status</span>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5"
+          >
+            <option value="">Todos</option>
+            <option value="queued">queued</option>
+            <option value="sending">sending</option>
+            <option value="sent">sent</option>
+            <option value="failed">failed</option>
+            <option value="skipped">skipped</option>
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="text-slate-700">Desde (UTC)</span>
+          <input
+            type="date"
+            value={filterFrom}
+            onChange={(e) => setFilterFrom(e.target.value)}
+            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="rounded-md border border-slate-200 px-3 py-1.5 text-sm"
+        >
+          Atualizar histórico
+        </button>
+      </div>
+
       {loading ? (
         <p className="text-sm text-slate-500">Carregando jobs…</p>
       ) : jobs.length === 0 ? (
@@ -290,8 +330,24 @@ export function DispatchManager() {
                       {j.status}
                     </span>
                   </td>
-                  <td className="max-w-xs truncate px-3 py-2 text-xs text-red-600">
-                    {j.error ?? ""}
+                  <td className="max-w-xs px-3 py-2 text-xs text-red-600">
+                    {j.error ? (
+                      <button
+                        type="button"
+                        className="text-left underline"
+                        onClick={() =>
+                          setExpandedError((cur) =>
+                            cur === j.id ? null : j.id,
+                          )
+                        }
+                      >
+                        {expandedError === j.id
+                          ? j.error
+                          : j.error.length > 48
+                            ? `${j.error.slice(0, 48)}…`
+                            : j.error}
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}

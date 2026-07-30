@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 06 - Dashboard Executivo e Stats Operacionais
 
-> **Feature:** `plataforma-promocoes` | **Status:** `PENDENTE` | **Data:** 2026-07-29
+> **Feature:** `plataforma-promocoes` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-29
 
 <!-- Arquivo: docs/specs/spec-plataforma-promocoes-fatia-06.md -->
 
@@ -64,7 +64,7 @@
 - [ ] **Aceite:** admin vê de relance se meta do dia e saúde do bot; latência aceitável free tier.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** API stats, KPI cards, polish histórico, testes agregação
-- **Próximo comando:** `/sdd-implement` (última fatia → depois `/sdd-validate`)
+- **Status:** `CONCLUÍDO`
+- **Concluído:** overview API/KPIs, meta progress, filtros histórico disparos, testes agregação
+- **Pendente:** —
+- **Próximo comando:** `/sdd-validate`
