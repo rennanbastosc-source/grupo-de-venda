@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 02 - Wire ML, Amazon e Shopee no pipeline
 
-> **Feature:** `firecrawl-scrape` | **Status:** `PENDENTE` | **Data:** 2026-07-30
+> **Feature:** `firecrawl-scrape` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-30
 
 <!-- Arquivo: docs/specs/spec-firecrawl-scrape-fatia-02.md -->
 
@@ -44,7 +44,9 @@
 - [ ] **Validação Estrita:** `npm run typecheck` + `npm run test` verdes.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
+- **Status:** `CONCLUÍDO`
+- **Concluído:** `mercadolivre.ts`, `amazon.ts`, `shopee.ts`, `stubs.ts`, `registry.ts`
+- **Pendente:** —
 - **Concluído:** —
 - **Pendente:** rewrites ML/Amazon, shopee.ts, registry, stubs, testes
 - **Próximo comando:** `/sdd-implement`

@@ -1,9 +1,13 @@
 import type { RawOffer, Scraper } from "./types";
-import { extractOffersFromHtml } from "./html-extract";
+import { scrapeOffersFromUrl } from "./firecrawl";
 
 const DEFAULT_URL =
   process.env.SCRAPE_ML_URL ||
   "https://lista.mercadolivre.com.br/ofertas";
+
+const PROMPT = `Extraia produtos em oferta desta página do Mercado Livre.
+Para cada item: title (nome completo), url (link absoluto do produto), priceCents (preço em centavos inteiros, ex: R$ 99,90 = 9990), imageUrl e externalId (MLB… se houver).
+Ignore anúncios de serviço e banners. Máximo 15 itens.`;
 
 async function fetchOffers(): Promise<RawOffer[]> {
   if (process.env.SCRAPE_MOCK === "1") {
@@ -16,27 +20,7 @@ async function fetchOffers(): Promise<RawOffer[]> {
       },
     ];
   }
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 12_000);
-  try {
-    const res = await fetch(DEFAULT_URL, {
-      signal: ctrl.signal,
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (compatible; GrupoDeVendaBot/0.1; +https://localhost)",
-        "accept-language": "pt-BR,pt;q=0.9",
-      },
-    });
-    if (!res.ok) throw new Error(`ML HTTP ${res.status}`);
-    const html = await res.text();
-    return extractOffersFromHtml(html, DEFAULT_URL, {
-      hostIncludes: "mercadolivre.com",
-      hrefPattern: /mercadolivre\.com\.(br|ar|mx)/i,
-      max: 15,
-    });
-  } finally {
-    clearTimeout(t);
-  }
+  return scrapeOffersFromUrl(DEFAULT_URL, PROMPT);
 }
 
 export const mercadolivreScraper: Scraper = {
