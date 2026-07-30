@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 01 - Client Firecrawl + testes unitários
 
-> **Feature:** `firecrawl-scrape` | **Status:** `EM ANDAMENTO` | **Data:** 2026-07-30
+> **Feature:** `firecrawl-scrape` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-30
 
 <!-- Arquivo: docs/specs/spec-firecrawl-scrape-fatia-01.md -->
 
@@ -85,7 +85,7 @@
 - [ ] **Validação Estrita:** `npx vitest run tests/firecrawl-scraper.test.ts` verde; `npm run typecheck` verde; key **não** aparece em arquivos versionados.
 
 ## 6. Checkpoint de Execução
-- **Status:** `EM ANDAMENTO`
-- **Concluído:** —
-- **Pendente:** client, testes, `.env.example`
+- **Status:** `CONCLUÍDO` <!-- /sdd-implement flipa: PENDENTE → EM ANDAMENTO → CONCLUÍDO -->
+- **Concluído:** `src/lib/scrapers/firecrawl.ts`, `tests/firecrawl-scraper.test.ts`, `.env.example`
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`
