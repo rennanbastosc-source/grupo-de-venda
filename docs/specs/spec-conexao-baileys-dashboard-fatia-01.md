@@ -94,4 +94,12 @@
 - **Status:** `CONCLUÍDO`
 - **Concluído:** worker lifecycle (account gate, pair code+QR TTL, restartRequired, logout clearAuth); auth Supabase cifrado + fallback multi-file; HTTP `/session`, `/session/qr`, `/session/pairing-code`, `/session/pair`, logout/start; migration `006_wa_session_keys.sql`; testes phone/crypto/session/HTTP
 - **Pendente:** —
-- **Próximo comando:** `/sdd-implement`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- Worker ESM (`worker/`) com `@whiskeysockets/baileys` + `qrcode`.
+- `client.ts`: gate `creds.account`; mailbox in-memory `setPairingRequest`/`consumePairingRequest`; `requestPairingCode` no evento `qr`; reconnect imediato em `restartRequired`; `loggedOut` → `clearAuth` + status `logged_out`; backoff 5s–60s.
+- Auth: `auth-state.ts` grava `wa_session_keys` via Supabase REST cifrado (`crypto.ts` AES-256-GCM); sem `WHATSAPP_SESSION_KEY` → multi-file `BAILEYS_AUTH_DIR`.
+- Status em memória (`session.ts`): `waiting_pairing|qr|connecting|connected|logged_out|disconnected` + TTL code 3min / QR 1min.
+- HTTP (`x-worker-secret`): GET `/session`, `/session/qr`, `/session/pairing-code`; POST `/session/pair`, `/session/start`, `/session/logout`; POST `/send` 409 se ≠ connected.
+- Migration `006_wa_session_keys.sql` (keys + colunas `pairing_code`/`phone` em `wa_session`).

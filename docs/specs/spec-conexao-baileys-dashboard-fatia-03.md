@@ -62,4 +62,12 @@
 - **Status:** `CONCLUÍDO`
 - **Concluído:** logout/reconnect APIs + SessionPanel; gate disparos com copy `/dashboard/bot`; Overview/Dispatch links; `.env.example` + `worker/.env.example`; testes bot-session-actions e dispatch-session-gate
 - **Pendente:** —
-- **Próximo comando:** `/sdd-validate`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- `logoutWorkerSession` / `startWorkerSession`; `POST /api/bot/logout`, `POST /api/bot/reconnect` (409 `needsPairing` se waiting_pairing/logged_out ou pós-start waiting).
+- SessionPanel: Desconectar (confirm) · Reconectar · banner worker offline · copy código/QR expirado · foco no input se needsPairing.
+- `processDispatchQueue` + `assertSessionConnected`: mensagem “WhatsApp desconectado — reconecte em /dashboard/bot”.
+- Overview/Dispatch links para `/dashboard/bot`.
+- Env docs: `.env.example`, `worker/.env.example` (`WHATSAPP_SESSION_KEY` = `openssl rand -base64 32`).
+- CI GitHub Actions (padrão almoxarifado): lint, tsc app+worker, vitest, build, audit; smoke prod; dependabot. `tsconfig` exclui `tests/` para build CI sem baileys na raiz.

@@ -63,4 +63,12 @@
 - **Status:** `CONCLUÍDO`
 - **Concluído:** worker-client pair/code; mapSessionForUi + statuses; APIs `/api/bot/pair` e `/pairing-code`; SessionPanel form+código+QR+poll 4s; SessionBadge; testes session-status e bot-pair-api
 - **Pendente:** —
-- **Próximo comando:** `/sdd-implement`
+- **Próximo comando:** `/sdd-finish`
+
+## 7. As-Built
+- `worker-client`: `pairWorkerSession`, `getWorkerPairingCode` + tipos `hasPairingCode`/`phone`.
+- `mapSessionForUi` + `WaSessionStatus` com `waiting_pairing`/`logged_out`; `canDispatch` só `connected`.
+- `normalizePhone`/`maskPhone` em `src/lib/wa/phone.ts` (espelho worker).
+- Rotas auth (`requireUser`): `POST /api/bot/pair`, `GET /api/bot/pairing-code`; status repassa phone/hasPairingCode.
+- UI `/dashboard/bot` + `SessionPanel`: form telefone, código 8 dígitos, QR data-URL, poll 4s enquanto ≠ connected, `SessionBadge` por tom.
+- Testes: `session-status`, `bot-pair-api` (contrato 401/400/503/202).

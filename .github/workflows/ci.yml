@@ -71,8 +71,13 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Instalar dependências
+      - name: Instalar dependências (app)
         run: npm ci
+
+      - name: Instalar dependências (worker)
+        # next typecheck / imports de testes e paths podem resolver o package worker
+        run: npm ci
+        working-directory: worker
 
       - name: Build
         run: npm run build
