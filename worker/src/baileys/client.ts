@@ -1,84 +1,338 @@
 import makeWASocket, {
   DisconnectReason,
+  initAuthCreds,
+  BufferJSON,
+  proto,
   useMultiFileAuthState,
+  makeCacheableSignalKeyStore,
+  fetchLatestWaWebVersion,
   type WASocket,
+  type ConnectionState,
 } from "@whiskeysockets/baileys";
 import QRCode from "qrcode";
-import path from "node:path";
-import { clearQr, setSessionStatus } from "./session.js";
+import { createAuthState, type AuthBundle } from "./auth-state.js";
+import {
+  clearQr,
+  consumePairingRequest,
+  setPairingCode,
+  setQrDataUrl,
+  setSessionStatus,
+} from "./session.js";
+
+const RECONNECT_MIN_MS = 5_000;
+const RECONNECT_MAX_MS = 60_000;
+const PAIRING_POLL_MS = 10_000;
 
 let sock: WASocket | null = null;
+let authBundle: AuthBundle | null = null;
+let pendingPairingPhone: string | null = null;
+let resumingPairing = false;
+let connecting = false;
+let stopping = false;
+let reconnectAttempt = 0;
+let timer: ReturnType<typeof setTimeout> | null = null;
 
 export function getSocket() {
   return sock;
 }
 
+function encryptionKey(): string | null {
+  return process.env.WHATSAPP_SESSION_KEY || null;
+}
+
+function clearTimer() {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+}
+
+function schedule(delayMs: number) {
+  clearTimer();
+  if (stopping) return;
+  timer = setTimeout(() => {
+    void startBaileys();
+  }, delayMs);
+}
+
+function scheduleReconnect() {
+  const delay = Math.min(
+    RECONNECT_MIN_MS * 2 ** reconnectAttempt,
+    RECONNECT_MAX_MS,
+  );
+  reconnectAttempt += 1;
+  schedule(delay);
+}
+
 function disconnectCode(err: unknown): number | undefined {
   if (err && typeof err === "object" && "output" in err) {
-    const out = (err as { output?: { statusCode?: number } }).output;
-    return out?.statusCode;
+    return (err as { output?: { statusCode?: number } }).output?.statusCode;
   }
   return undefined;
 }
 
-export async function startBaileys() {
-  const authDir =
-    process.env.BAILEYS_AUTH_DIR ||
-    path.join(process.cwd(), "data", "auth");
+function jidToPhone(jid: string | undefined): string | undefined {
+  return jid?.split("@")[0]?.split(":")[0];
+}
 
-  setSessionStatus("connecting", { lastError: null });
+async function discardIncompleteAuth() {
+  if (!authBundle || authBundle.state.creds.account) return;
+  try {
+    await authBundle.clearAuth();
+    authBundle = null;
+  } catch {
+    // ignore
+  }
+}
 
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+async function loadAuth(): Promise<AuthBundle> {
+  if (!authBundle) {
+    authBundle = await createAuthState(
+      {
+        initAuthCreds,
+        BufferJSON,
+        proto,
+        useMultiFileAuthState,
+      },
+      encryptionKey(),
+    );
+  }
+  return authBundle;
+}
 
-  sock = makeWASocket({
-    auth: state,
-    printQRInTerminal: false,
-  });
+function retireSocket(target: WASocket): boolean {
+  try {
+    target.ev.removeAllListeners("connection.update");
+    target.ev.removeAllListeners("creds.update");
+    target.end(undefined);
+  } catch {
+    // ignore
+  }
+  if (sock !== target) return false;
+  sock = null;
+  return true;
+}
 
-  sock.ev.on("creds.update", saveCreds);
+async function handleConnectionUpdate(
+  target: WASocket,
+  update: Partial<ConnectionState>,
+) {
+  const { connection, lastDisconnect, qr } = update;
 
-  sock.ev.on("connection.update", async (update) => {
-    const { connection, lastDisconnect, qr } = update;
+  if (qr) {
+    try {
+      const qrDataUrl = await QRCode.toDataURL(qr);
+      setQrDataUrl(qrDataUrl);
+      setSessionStatus("qr", { lastError: null });
+    } catch (e) {
+      setSessionStatus("qr", {
+        lastError: e instanceof Error ? e.message : "QR fail",
+      });
+    }
 
-    if (qr) {
+    if (pendingPairingPhone) {
+      const phone = pendingPairingPhone;
+      pendingPairingPhone = null;
       try {
-        const qrDataUrl = await QRCode.toDataURL(qr);
-        setSessionStatus("qr", { qrDataUrl, lastError: null });
+        const code = await target.requestPairingCode(phone);
+        setPairingCode(code);
+        setSessionStatus("qr", { phone, lastError: null });
       } catch (e) {
         setSessionStatus("qr", {
-          lastError: e instanceof Error ? e.message : "QR fail",
+          lastError:
+            e instanceof Error ? e.message : "falha pairing code",
         });
       }
     }
+    return;
+  }
 
-    if (connection === "open") {
-      clearQr();
-      setSessionStatus("connected", { lastError: null });
-    }
+  if (connection === "open") {
+    reconnectAttempt = 0;
+    resumingPairing = false;
+    clearTimer();
+    clearQr();
+    const phone = jidToPhone(target.user?.id) ?? null;
+    setSessionStatus("connected", {
+      phone,
+      lastError: null,
+      pairingCode: null,
+      pairingCodeAt: null,
+    });
+    return;
+  }
 
-    if (connection === "close") {
-      const code = disconnectCode(lastDisconnect?.error);
-      const loggedOut = code === DisconnectReason.loggedOut;
-      const msg =
-        lastDisconnect?.error instanceof Error
-          ? lastDisconnect.error.message
-          : "conexão fechada";
-      setSessionStatus("disconnected", {
-        lastError: loggedOut
-          ? "Sessão deslogada — escaneie QR novamente"
-          : msg,
-        qrDataUrl: null,
-      });
-      sock = null;
-      if (!loggedOut) {
-        setTimeout(() => {
-          startBaileys().catch((err) => {
-            setSessionStatus("disconnected", {
-              lastError: err instanceof Error ? err.message : String(err),
-            });
-          });
-        }, 3000);
-      }
+  if (connection !== "close") return;
+  if (!retireSocket(target)) return;
+  if (stopping) return;
+
+  const code = disconnectCode(lastDisconnect?.error);
+
+  if (code === DisconnectReason.restartRequired) {
+    resumingPairing = true;
+    setSessionStatus("connecting", { lastError: null });
+    schedule(0);
+    return;
+  }
+
+  if (code === DisconnectReason.loggedOut) {
+    if (authBundle) {
+      await authBundle.clearAuth().catch(() => {});
+      authBundle = null;
     }
+    resumingPairing = false;
+    setSessionStatus("logged_out", {
+      qrDataUrl: null,
+      pairingCode: null,
+      lastError: "Sessão encerrada no aparelho",
+    });
+    schedule(PAIRING_POLL_MS);
+    return;
+  }
+
+  if (pendingPairingPhone !== null || code === DisconnectReason.timedOut) {
+    pendingPairingPhone = null;
+    resumingPairing = false;
+    await discardIncompleteAuth();
+    setSessionStatus("waiting_pairing", {
+      qrDataUrl: null,
+      pairingCode: null,
+      lastError: null,
+    });
+    schedule(PAIRING_POLL_MS);
+    return;
+  }
+
+  const msg =
+    lastDisconnect?.error instanceof Error
+      ? lastDisconnect.error.message
+      : "conexão fechada";
+  setSessionStatus("disconnected", {
+    lastError: msg,
+    qrDataUrl: null,
   });
+  scheduleReconnect();
+}
+
+export async function startBaileys() {
+  if (stopping || connecting) return;
+  connecting = true;
+
+  try {
+    const auth = await loadAuth();
+
+    // Gate: só sobe socket se account existe, pair pendente, ou resuming pair
+    if (!auth.state.creds.account) {
+      const phone = consumePairingRequest();
+      if (!phone && !resumingPairing) {
+        setSessionStatus("waiting_pairing", { lastError: null });
+        schedule(PAIRING_POLL_MS);
+        return;
+      }
+      pendingPairingPhone = phone;
+    }
+
+    setSessionStatus("connecting", { lastError: null });
+
+    const version = await fetchLatestWaWebVersion({})
+      .then((r) => r.version)
+      .catch(() => undefined);
+
+    // logger mínimo (Baileys exige pino-like); silencia ruído
+    const silent = {
+      level: "silent" as const,
+      child() {
+        return silent;
+      },
+      trace() {},
+      debug() {},
+      info() {},
+      warn() {},
+      error() {},
+      fatal() {},
+    };
+
+    const next = makeWASocket({
+      version,
+      auth: {
+        creds: auth.state.creds,
+        keys: makeCacheableSignalKeyStore(auth.state.keys, silent as never),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      logger: silent as any,
+      printQRInTerminal: false,
+      browser: ["Mac OS", "Safari", "1.0.0"],
+      markOnlineOnConnect: false,
+      syncFullHistory: false,
+      qrTimeout: 60_000,
+    });
+
+    if (sock) retireSocket(sock);
+    sock = next;
+
+    next.ev.on("creds.update", () => {
+      void auth.saveCreds().catch(() => {});
+    });
+
+    next.ev.on("connection.update", (update) => {
+      void handleConnectionUpdate(next, update).catch((e) => {
+        setSessionStatus("disconnected", {
+          lastError: e instanceof Error ? e.message : String(e),
+        });
+      });
+    });
+  } catch (e) {
+    setSessionStatus("disconnected", {
+      lastError: e instanceof Error ? e.message : String(e),
+    });
+    scheduleReconnect();
+  } finally {
+    connecting = false;
+  }
+}
+
+export async function requestPairing(phone: string) {
+  const { setPairingRequest } = await import("./session.js");
+  setPairingRequest(phone);
+  setSessionStatus("waiting_pairing", {
+    phone,
+    lastError: null,
+    pairingCode: null,
+  });
+  // força tentativa imediata
+  clearTimer();
+  resumingPairing = false;
+  await startBaileys();
+}
+
+export async function logoutBaileys() {
+  try {
+    if (sock) await sock.logout();
+  } catch {
+    // ignore
+  }
+  if (authBundle) {
+    await authBundle.clearAuth().catch(() => {});
+    authBundle = null;
+  }
+  if (sock) {
+    retireSocket(sock);
+  }
+  pendingPairingPhone = null;
+  resumingPairing = false;
+  setSessionStatus("logged_out", {
+    qrDataUrl: null,
+    pairingCode: null,
+    lastError: "logout",
+  });
+  schedule(PAIRING_POLL_MS);
+}
+
+export function stopBaileys() {
+  stopping = true;
+  clearTimer();
+  resumingPairing = false;
+  pendingPairingPhone = null;
+  authBundle = null;
+  if (sock) retireSocket(sock);
 }

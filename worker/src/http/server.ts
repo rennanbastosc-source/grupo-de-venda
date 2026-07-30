@@ -1,7 +1,17 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { requireWorkerSecret } from "../auth.js";
-import { getSessionState, setSessionStatus } from "../baileys/session.js";
-import { getSocket, startBaileys } from "../baileys/client.js";
+import {
+  getSessionState,
+  sessionPublicView,
+  setSessionStatus,
+} from "../baileys/session.js";
+import {
+  getSocket,
+  logoutBaileys,
+  requestPairing,
+  startBaileys,
+} from "../baileys/client.js";
+import { normalizePhone } from "../baileys/phone.js";
 
 function json(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "content-type": "application/json" });
@@ -35,12 +45,7 @@ export function createWorkerServer() {
     if (!requireWorkerSecret(req, res)) return;
 
     if (method === "GET" && url.pathname === "/session") {
-      const s = getSessionState();
-      return json(res, 200, {
-        status: s.status,
-        hasQr: Boolean(s.qrDataUrl),
-        lastError: s.lastError,
-      });
+      return json(res, 200, sessionPublicView());
     }
 
     if (method === "GET" && url.pathname === "/session/qr") {
@@ -48,22 +53,41 @@ export function createWorkerServer() {
       return json(res, 200, { qrDataUrl: s.qrDataUrl });
     }
 
-    if (method === "POST" && url.pathname === "/session/logout") {
-      try {
-        const s = getSocket();
-        if (s) await s.logout();
-      } catch {
-        // ignore
-      }
-      setSessionStatus("disconnected", {
-        qrDataUrl: null,
-        lastError: "logout",
+    if (method === "GET" && url.pathname === "/session/pairing-code") {
+      const s = getSessionState();
+      return json(res, 200, {
+        code: s.pairingCode,
+        phone: s.phone,
+        at: s.pairingCodeAt,
       });
+    }
+
+    if (method === "POST" && url.pathname === "/session/pair") {
+      let body: { phone?: string };
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        return json(res, 400, { error: "JSON inválido" });
+      }
+      const phone = normalizePhone(body.phone ?? "");
+      if (!phone) {
+        return json(res, 400, { error: "phone inválido" });
+      }
+      void requestPairing(phone).catch((e) => {
+        setSessionStatus("disconnected", {
+          lastError: e instanceof Error ? e.message : String(e),
+        });
+      });
+      return json(res, 202, { ok: true, phone });
+    }
+
+    if (method === "POST" && url.pathname === "/session/logout") {
+      await logoutBaileys();
       return json(res, 200, { ok: true });
     }
 
     if (method === "POST" && url.pathname === "/session/start") {
-      startBaileys().catch((e) => {
+      void startBaileys().catch((e) => {
         setSessionStatus("disconnected", {
           lastError: e instanceof Error ? e.message : String(e),
         });
@@ -92,12 +116,12 @@ export function createWorkerServer() {
       if (body.jobId && sentJobIds.has(body.jobId)) {
         return json(res, 200, { ok: true, jobId: body.jobId, deduped: true });
       }
-      const sock = getSocket();
-      if (!sock) {
+      const socket = getSocket();
+      if (!socket) {
         return json(res, 503, { error: "socket indisponível" });
       }
       try {
-        await sock.sendMessage(jid, { text });
+        await socket.sendMessage(jid, { text });
         if (body.jobId) sentJobIds.add(body.jobId);
         return json(res, 200, { ok: true, jobId: body.jobId });
       } catch (e) {

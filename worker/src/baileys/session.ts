@@ -1,37 +1,127 @@
 export type SessionStatus =
   | "disconnected"
+  | "waiting_pairing"
   | "qr"
   | "connecting"
-  | "connected";
+  | "connected"
+  | "logged_out";
 
 export type SessionState = {
   status: SessionStatus;
   qrDataUrl: string | null;
+  qrAt: number | null;
+  pairingCode: string | null;
+  pairingCodeAt: number | null;
+  phone: string | null;
   lastError: string | null;
 };
+
+export const PAIRING_CODE_TTL_MS = 3 * 60 * 1000;
+export const PAIRING_QR_TTL_MS = 60 * 1000;
 
 const state: SessionState = {
   status: "disconnected",
   qrDataUrl: null,
+  qrAt: null,
+  pairingCode: null,
+  pairingCodeAt: null,
+  phone: null,
   lastError: null,
 };
 
-export function getSessionState(): SessionState {
-  return { ...state };
+export function getSessionState(now = Date.now()): SessionState {
+  const snap = { ...state };
+  if (
+    snap.pairingCode &&
+    snap.pairingCodeAt &&
+    now - snap.pairingCodeAt > PAIRING_CODE_TTL_MS
+  ) {
+    snap.pairingCode = null;
+    snap.pairingCodeAt = null;
+  }
+  if (snap.qrDataUrl && snap.qrAt && now - snap.qrAt > PAIRING_QR_TTL_MS) {
+    snap.qrDataUrl = null;
+    snap.qrAt = null;
+  }
+  return snap;
 }
 
 export function setSessionStatus(
   status: SessionStatus,
-  patch?: Partial<Pick<SessionState, "qrDataUrl" | "lastError">>,
+  patch?: Partial<
+    Pick<
+      SessionState,
+      | "qrDataUrl"
+      | "qrAt"
+      | "pairingCode"
+      | "pairingCodeAt"
+      | "phone"
+      | "lastError"
+    >
+  >,
 ) {
   state.status = status;
   if (patch?.qrDataUrl !== undefined) state.qrDataUrl = patch.qrDataUrl;
+  if (patch?.qrAt !== undefined) state.qrAt = patch.qrAt;
+  if (patch?.pairingCode !== undefined) state.pairingCode = patch.pairingCode;
+  if (patch?.pairingCodeAt !== undefined)
+    state.pairingCodeAt = patch.pairingCodeAt;
+  if (patch?.phone !== undefined) state.phone = patch.phone;
   if (patch?.lastError !== undefined) state.lastError = patch.lastError;
-  if (status === "connected" || status === "disconnected") {
-    if (patch?.qrDataUrl === undefined) state.qrDataUrl = null;
+  if (status === "connected" || status === "disconnected" || status === "logged_out") {
+    if (patch?.qrDataUrl === undefined) {
+      state.qrDataUrl = null;
+      state.qrAt = null;
+    }
+    if (status === "connected" && patch?.pairingCode === undefined) {
+      state.pairingCode = null;
+      state.pairingCodeAt = null;
+    }
   }
 }
 
 export function clearQr() {
   state.qrDataUrl = null;
+  state.qrAt = null;
+}
+
+export function setPairingCode(code: string) {
+  state.pairingCode = code;
+  state.pairingCodeAt = Date.now();
+}
+
+export function setQrDataUrl(qrDataUrl: string) {
+  state.qrDataUrl = qrDataUrl;
+  state.qrAt = Date.now();
+}
+
+/** Pedido de pareamento em memória (mailbox worker). */
+let pendingPairPhone: string | null = null;
+
+export function setPairingRequest(phone: string) {
+  pendingPairPhone = phone;
+  state.phone = phone;
+  state.pairingCode = null;
+  state.pairingCodeAt = null;
+}
+
+export function consumePairingRequest(): string | null {
+  const p = pendingPairPhone;
+  pendingPairPhone = null;
+  return p;
+}
+
+export function peekPairingRequest(): string | null {
+  return pendingPairPhone;
+}
+
+export function sessionPublicView(now = Date.now()) {
+  const s = getSessionState(now);
+  return {
+    status: s.status,
+    hasQr: Boolean(s.qrDataUrl),
+    hasPairingCode: Boolean(s.pairingCode),
+    phone: s.phone,
+    lastError: s.lastError,
+  };
 }
