@@ -17,4 +17,3 @@ startBaileys().catch((e) => {
   console.error("[worker] baileys start failed", e);
 });
 
-// render-autodeploy-check
