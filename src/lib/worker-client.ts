@@ -1,11 +1,19 @@
 export type WorkerSession = {
   status: string;
   hasQr: boolean;
+  hasPairingCode?: boolean;
+  phone?: string | null;
   lastError?: string | null;
 };
 
 export type WorkerQr = {
   qrDataUrl: string | null;
+};
+
+export type WorkerPairingCode = {
+  code: string | null;
+  phone: string | null;
+  at: number | null;
 };
 
 function workerConfig() {
@@ -62,6 +70,17 @@ export async function getWorkerSession() {
 
 export async function getWorkerQr() {
   return workerFetch<WorkerQr>("/session/qr");
+}
+
+export async function getWorkerPairingCode() {
+  return workerFetch<WorkerPairingCode>("/session/pairing-code");
+}
+
+export async function pairWorkerSession(phone: string) {
+  return workerFetch<{ ok: boolean; phone?: string }>("/session/pair", {
+    method: "POST",
+    body: JSON.stringify({ phone }),
+  });
 }
 
 export async function workerSend(input: {

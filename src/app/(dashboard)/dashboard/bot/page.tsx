@@ -4,9 +4,12 @@ export default function BotPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Bot / Sessão</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Conexão WhatsApp / Baileys
+        </h1>
         <p className="text-sm text-slate-500">
-          Worker Baileys (processo separado da Vercel).
+          Pareie o número disparador pelo painel (código + QR). Worker
+          long-running separado da Vercel.
         </p>
       </div>
       <SessionPanel />

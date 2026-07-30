@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 02 - Orquestração Next ↔ worker + tela dashboard de pareamento
 
-> **Feature:** `conexao-baileys-dashboard` | **Status:** `PENDENTE` | **Data:** 2026-07-29
+> **Feature:** `conexao-baileys-dashboard` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-29
 
 <!-- Arquivo: docs/specs/spec-conexao-baileys-dashboard-fatia-02.md -->
 
@@ -60,7 +60,7 @@
 - [ ] **Aceite:** admin logado digita número, vê código+QR no painel (worker real ou mock), status atualiza até `connected` no happy path.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** APIs bot pair/code + SessionPanel + testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** worker-client pair/code; mapSessionForUi + statuses; APIs `/api/bot/pair` e `/pairing-code`; SessionPanel form+código+QR+poll 4s; SessionBadge; testes session-status e bot-pair-api
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`
