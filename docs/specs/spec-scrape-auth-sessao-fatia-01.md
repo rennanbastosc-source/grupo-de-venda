@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 01 - Sessão persistente + login automático (store + self-heal)
 
-> **Feature:** `scrape-auth-sessao` | **Status:** `PENDENTE` | **Data:** 2026-07-30
+> **Feature:** `scrape-auth-sessao` | **Status:** `EM ANDAMENTO` | **Data:** 2026-07-30
 
 <!-- Arquivo: docs/specs/spec-scrape-auth-sessao-fatia-01.md -->
 
@@ -96,7 +96,7 @@
 - [ ] Migration aplicável em staging/prod **antes** do merge (gate AGENTS.md).
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** migration, store, login por fonte, ensure/retry, testes, `.env.example`
-- **Próximo comando:** `/sdd-implement` (repita até a última fatia; depois `/sdd-validate`)
+- **Status:** `CONCLUÍDO`
+- **Concluído:** migration 007_marketplace_sessions, store (load/save/list), login (ML/Amazon/Shopee), ensureSession/withSessionRetry, .env.example, testes Vitest
+- **Pendente:** —
+- **Próximo comando:** `/sdd-implement`
