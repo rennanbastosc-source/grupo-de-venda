@@ -1,0 +1,37 @@
+name: Smoke de produção
+
+on:
+  schedule:
+    - cron: "17 11 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-production
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Login e proteção do dashboard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASE_URL: https://grupo-de-venda.vercel.app
+
+    steps:
+      - name: Verificar login
+        run: curl --fail --silent --show-error --retry 3 --retry-all-errors "$BASE_URL/login" > /dev/null
+
+      - name: Verificar proteção do dashboard
+        run: |
+          headers=$(mktemp)
+          status=$(curl --silent --show-error --retry 3 --retry-all-errors --output /dev/null --dump-header "$headers" --write-out "%{http_code}" "$BASE_URL/dashboard")
+          location=$(awk 'BEGIN { IGNORECASE=1 } /^location:/ { gsub("\r", ""); print $2 }' "$headers")
+          # middleware pode redirecionar 307/302/308 para /login
+          case "$status" in
+            302|307|308) ;;
+            *) echo "status inesperado: $status"; exit 1 ;;
+          esac
+          echo "$location" | grep -q '/login'

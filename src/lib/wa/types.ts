@@ -1,8 +1,10 @@
 export type WaSessionStatus =
   | "disconnected"
+  | "waiting_pairing"
   | "qr"
   | "connecting"
-  | "connected";
+  | "connected"
+  | "logged_out";
 
 export type WaGroupInput = {
   jid: string;

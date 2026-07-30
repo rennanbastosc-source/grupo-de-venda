@@ -63,10 +63,9 @@ export async function processDispatchQueue(
 
   const session = await workerFetch<{ status: string }>("/session");
   if (!session.ok || session.data.status !== "connected") {
-    result.stoppedReason =
-      session.ok
-        ? `session ${session.data.status}`
-        : session.error;
+    result.stoppedReason = session.ok
+      ? "WhatsApp desconectado — reconecte em /dashboard/bot"
+      : `Worker inacessível — ${session.error}`;
     return result;
   }
 

@@ -142,6 +142,15 @@ export function DispatchManager() {
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-slate-600">
+        Disparos exigem WhatsApp conectado.{" "}
+        <a
+          href="/dashboard/bot"
+          className="font-medium text-slate-900 underline underline-offset-2"
+        >
+          Gerenciar sessão em Bot
+        </a>
+      </p>
       <form
         onSubmit={onEnqueue}
         className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4"

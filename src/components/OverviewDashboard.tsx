@@ -89,8 +89,14 @@ export function OverviewDashboard() {
           className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
           role="alert"
         >
-          Sessão WhatsApp: {stats.sessionStatus}. Disparos bloqueados até
-          conectar.
+          Sessão WhatsApp: {stats.sessionStatus}. Disparos bloqueados.{" "}
+          <a
+            href="/dashboard/bot"
+            className="font-medium underline underline-offset-2"
+          >
+            Reconecte em Bot
+          </a>
+          .
         </p>
       ) : null}
 

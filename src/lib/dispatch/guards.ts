@@ -19,7 +19,8 @@ export async function assertSessionConnected(): Promise<
   if (session.data.status !== "connected") {
     return {
       ok: false,
-      error: `Sessão WhatsApp: ${session.data.status} (precisa connected)`,
+      error:
+        "WhatsApp desconectado — reconecte em /dashboard/bot",
       status: 409,
     };
   }

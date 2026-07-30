@@ -9,6 +9,7 @@ server.listen(port, () => {
   console.log(`[worker] listening on :${port}`);
 });
 
+// Boot: tenta sessão existente ou waiting_pairing (sem forçar QR eterno)
 startBaileys().catch((e) => {
   setSessionStatus("disconnected", {
     lastError: e instanceof Error ? e.message : String(e),

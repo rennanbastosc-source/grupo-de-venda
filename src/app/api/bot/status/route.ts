@@ -30,6 +30,8 @@ export async function GET() {
     mapSessionForUi({
       status: res.data.status,
       hasQr: res.data.hasQr,
+      hasPairingCode: res.data.hasPairingCode,
+      phone: res.data.phone,
       lastError: res.data.lastError,
     }),
   );
