@@ -36,7 +36,7 @@ function coercePriceCents(v: unknown): number | undefined {
 export async function scrapeOffersFromUrl(
   targetUrl: string,
   prompt: string,
-  opts?: { max?: number; signal?: AbortSignal },
+  opts?: { max?: number; signal?: AbortSignal; headers?: Record<string, string> },
 ): Promise<FirecrawlOffer[]> {
   const key = process.env.FIRECRAWL_API_KEY?.trim();
   if (!key) throw new Error("FIRECRAWL_API_KEY ausente");
@@ -47,6 +47,21 @@ export async function scrapeOffersFromUrl(
   const signal = opts?.signal ?? ctrl.signal;
 
   try {
+    const payload: Record<string, unknown> = {
+      url: targetUrl,
+      formats: ["extract"],
+      onlyMainContent: true,
+      timeout: 40000,
+      extract: {
+        prompt,
+        schema: OFFER_SCHEMA,
+      },
+    };
+
+    if (opts?.headers && Object.keys(opts.headers).length > 0) {
+      payload.headers = opts.headers;
+    }
+
     const res = await fetch(API, {
       method: "POST",
       signal,
@@ -54,16 +69,7 @@ export async function scrapeOffersFromUrl(
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        url: targetUrl,
-        formats: ["extract"],
-        onlyMainContent: true,
-        timeout: 40000,
-        extract: {
-          prompt,
-          schema: OFFER_SCHEMA,
-        },
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {

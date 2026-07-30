@@ -1,5 +1,6 @@
 import type { RawOffer, Scraper } from "./types";
 import { scrapeOffersFromUrl } from "./firecrawl";
+import { withSessionRetry } from "./session/ensure";
 
 const DEFAULT_URL =
   process.env.SCRAPE_ML_URL ||
@@ -21,7 +22,11 @@ async function fetchOffers(): Promise<RawOffer[]> {
       },
     ];
   }
-  return scrapeOffersFromUrl(DEFAULT_URL, PROMPT);
+  return withSessionRetry("mercadolivre", (session) =>
+    scrapeOffersFromUrl(DEFAULT_URL, PROMPT, {
+      headers: session.cookieHeader ? { Cookie: session.cookieHeader } : undefined,
+    }),
+  );
 }
 
 export const mercadolivreScraper: Scraper = {

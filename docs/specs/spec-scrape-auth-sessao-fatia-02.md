@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 02 - Scrape autenticado ML/Amazon + filtro anti-lixo
 
-> **Feature:** `scrape-auth-sessao` | **Status:** `PENDENTE` | **Data:** 2026-07-30
+> **Feature:** `scrape-auth-sessao` | **Status:** `EM ANDAMENTO` | **Data:** 2026-07-30
 
 <!-- Arquivo: docs/specs/spec-scrape-auth-sessao-fatia-02.md -->
 
@@ -80,7 +80,7 @@
 - [ ] **Validação Estrita:** `npm run test` / typecheck; zero mudança de contrato de resposta de `runScrape` além de `found` menor (filtrado)
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** headers Firecrawl, product-filter, wire ML/Amazon, testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** product-filter, headers no client Firecrawl, wire ML/Amazon com withSessionRetry, filtro no run-pipeline, testes unitários product-filter e firecrawl
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`

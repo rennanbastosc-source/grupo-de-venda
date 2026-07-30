@@ -115,4 +115,25 @@ describe("scrapeOffersFromUrl", () => {
     });
     expect(offers).toHaveLength(15);
   });
+
+  it("inclui headers no payload quando opts.headers é fornecido", async () => {
+    process.env.FIRECRAWL_API_KEY = "fc-test";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: { extract: { offers: [] } },
+        }),
+      }),
+    );
+    await scrapeOffersFromUrl("https://example.com", "x", {
+      headers: { Cookie: "ssid=abc" },
+    });
+    const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.headers).toEqual({ Cookie: "ssid=abc" });
+  });
 });
