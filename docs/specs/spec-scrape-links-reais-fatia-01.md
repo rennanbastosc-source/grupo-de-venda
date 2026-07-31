@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 01 - Harvest de links + validação HTTP + wire 3 fontes
 
-> **Feature:** `scrape-links-reais` | **Status:** `PENDENTE` | **Data:** 2026-07-31
+> **Feature:** `scrape-links-reais` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-31
 
 <!-- Arquivo: docs/specs/spec-scrape-links-reais-fatia-01.md — o <slug> no nome é obrigatório e isola esta feature de fluxos SDD paralelos. -->
 
@@ -122,7 +122,7 @@
 - [ ] **Validação Estrita:** `npm run lint` + `npm run typecheck` + `npm run test` verdes
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** firecrawl harvest; html-extract; url-alive; run-pipeline gate; wire 3 scrapers; testes; lint/tsc/test
-- **Próximo comando:** `/sdd-implement` (repita até a última fatia; depois `/sdd-validate`)
+- **Status:** `CONCLUÍDO`
+- **Concluído:** firecrawl harvest links+html; html-extract; url-alive; run-pipeline gate (skip mock); wire ML/Amazon/Shopee; testes; lint/tsc/test verdes
+- **Pendente:** —
+- **Próximo comando:** `/sdd-validate`
