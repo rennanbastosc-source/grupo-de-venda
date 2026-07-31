@@ -30,6 +30,49 @@ describe("url-alive", () => {
     expect(await isUrlAlive("https://shopee.com.br/product/1/2")).toBe(true);
   });
 
+  it("HEAD 503 + GET 200 → true (Amazon responde 503 a todo HEAD)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (_u: string, init: RequestInit) => ({
+        ok: init.method !== "HEAD",
+        status: init.method === "HEAD" ? 503 : 200,
+      })),
+    );
+    expect(await isUrlAlive("https://www.amazon.com.br/dp/B0876MJBG6")).toBe(
+      true,
+    );
+  });
+
+  // A Amazon serve ASIN inexistente como 500 (medido 4/5) ou 404 (1/5).
+  it.each([404, 500])(
+    "HEAD 503 + GET %i → false (ASIN alucinado)",
+    async (getStatus) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation(async (_u: string, init: RequestInit) => ({
+          ok: false,
+          status: init.method === "HEAD" ? 503 : getStatus,
+        })),
+      );
+      expect(await isUrlAlive("https://www.amazon.com.br/dp/B08FJCZDG5")).toBe(
+        false,
+      );
+    },
+  );
+
+  it("HEAD 503 + GET 429 → true (anti-bot não julga o recurso)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (_u: string, init: RequestInit) => ({
+        ok: false,
+        status: init.method === "HEAD" ? 503 : 429,
+      })),
+    );
+    expect(await isUrlAlive("https://www.amazon.com.br/dp/B0876MJBG6")).toBe(
+      true,
+    );
+  });
+
   it("rede throw → false (não propaga)", async () => {
     vi.stubGlobal(
       "fetch",

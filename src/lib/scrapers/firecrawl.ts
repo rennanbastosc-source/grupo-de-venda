@@ -1,7 +1,8 @@
 import type { RawOffer } from "./types";
 import { harvestOffers } from "./html-extract";
 
-const API = "https://api.firecrawl.dev/v1/scrape";
+// v2: `profile` (sessão de browser persistida) só existe a partir dela.
+const API = "https://api.firecrawl.dev/v2/scrape";
 
 export type FirecrawlOffer = RawOffer;
 
@@ -12,6 +13,8 @@ export type ScrapeOffersOpts = {
   signal?: AbortSignal;
   headers?: Record<string, string>;
   waitFor?: number;
+  /** Nome do profile Firecrawl com sessão logada (marketplaces que exigem login). */
+  profile?: string;
 };
 
 /**
@@ -46,6 +49,11 @@ export async function scrapeOffersFromUrl(
       payload.headers = opts.headers;
     }
 
+    if (opts.profile) {
+      // saveChanges:false → o scrape lê a sessão salva sem sobrescrevê-la.
+      payload.profile = { name: opts.profile, saveChanges: false };
+    }
+
     const res = await fetch(API, {
       method: "POST",
       signal,
@@ -73,11 +81,19 @@ export async function scrapeOffersFromUrl(
     const html =
       typeof json.data?.html === "string" ? json.data.html : undefined;
 
-    return harvestOffers(targetUrl, links, html, {
+    const offers = harvestOffers(targetUrl, links, html, {
       hostIncludes: opts.hostIncludes,
       hrefPattern: opts.hrefPattern,
       max,
     });
+
+    // A Shopee serve "Login Necessário" com HTTP 200 — sem isso a falha de
+    // sessão vira array vazio silencioso em vez de erro no painel.
+    if (offers.length === 0 && html && /Login Necess[áa]rio/i.test(html)) {
+      throw new Error(`Login Necessário: sessão ausente/expirada em ${targetUrl}`);
+    }
+
+    return offers;
   } finally {
     clearTimeout(t);
   }

@@ -7,6 +7,10 @@ const DEFAULT_URL =
 
 const HREF = /i\.\d+\.\d+|\/product\/\d+\/\d+/i;
 
+// A Shopee bloqueia navegação anônima de datacenter ("Login Necessário") em
+// toda página. Sem sessão de browser persistida no Firecrawl não há colheita.
+const PROFILE = process.env.FIRECRAWL_SHOPEE_PROFILE?.trim();
+
 async function fetchOffers(): Promise<RawOffer[]> {
   if (process.env.SCRAPE_MOCK === "1") {
     return [
@@ -22,7 +26,8 @@ async function fetchOffers(): Promise<RawOffer[]> {
     scrapeOffersFromUrl(DEFAULT_URL, {
       hostIncludes: "shopee.com.br",
       hrefPattern: HREF,
-      waitFor: 2500,
+      waitFor: 6000,
+      profile: PROFILE,
       headers: session.cookieHeader
         ? { Cookie: session.cookieHeader }
         : undefined,

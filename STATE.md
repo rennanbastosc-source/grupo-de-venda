@@ -27,3 +27,9 @@
 - Modelos: inalterados (`offers`, `scrape_runs`).
 - Decisões: harvest via `html-extract`/`harvestOffers`; `url-alive` com paralelismo limitado; Amazon default `gp/goldbox`; worker `normalizePhone` local (sem import cross-package app→worker).
 
+### fix-colheita-marketplaces  ·  2026-07-31
+- Invariantes: fonte ativa que colhe 0 ofertas marca o run `ok=false` com motivo legível (colheita vazia nunca é sucesso silencioso); Firecrawl na **v2** (`profile` só existe nela); Shopee exige `FIRECRAWL_SHOPEE_PROFILE` — sem ele a fonte falha visivelmente em vez de retornar `[]`; `url-alive` decide morte pelo **GET**, nunca pelo HEAD.
+- Medições (2026-07-31) que fundamentam o código: Amazon responde **503 a todo HEAD**, ASIN válido ou não — só o GET distingue (válido → 200 estável; inexistente → 500 em 4/5, 404 em 1/5). ML e Shopee devolvem 200 para qualquer path (SPA): validação HTTP é cega ali, a garantia vem de só colher href presente na página. Amazon `gp/goldbox` e `/deals` servem apenas banners `/promotion/psp/` (0 `/dp/`); `gp/bestsellers` entrega ~36 produtos reais.
+- Decisões: `SCRAPE_AMAZON_URL` default → `gp/bestsellers` (+`waitFor` 3s); Shopee via profile de browser Firecrawl (`saveChanges:false`) — login por env nunca autenticou nada; paywall "Login Necessário" (HTTP 200) vira exceção no client.
+- Purga: 58 ofertas removidas (42 `/dp/ASIN` alucinados pelo extract LLM antigo — 42/42 mortas na verificação; 11 banners `/promotion/psp/`; 5 links de login/privacidade do ML). Restaram 25, todas ML com slug de produto.
+

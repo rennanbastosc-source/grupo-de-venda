@@ -3,15 +3,17 @@ import type { RawOffer } from "./types";
 const DEFAULT_TIMEOUT_MS = 6_000;
 const CONCURRENCY = 4;
 
-function decideStatus(status: number): boolean | "retry-get" {
-  if (status === 404 || status === 410) return false;
-  if (status >= 200 && status < 400) return true;
-  // 403/401/429: keep (anti-bot) — evita falso negativo em massa
+/**
+ * Veredito sobre o GET (medido em 2026-07-31):
+ *   Amazon ASIN válido   → 200 sempre;  ASIN inexistente → 500 (4/5) ou 404 (1/5)
+ *   ML / Shopee          → 200 para qualquer path (SPA); validação HTTP é cega lá,
+ *                          a garantia vem de só colher href presente na página.
+ * 401/403/429 falam do bot, não do recurso → mantém.
+ */
+function aliveByGet(status: number): boolean {
+  if (status < 400) return true;
   if (status === 401 || status === 403 || status === 429) return true;
-  if (status === 405 || status === 501) return "retry-get";
-  // outros 4xx/5xx: drop
-  if (status >= 400) return false;
-  return true;
+  return false;
 }
 
 async function probe(
@@ -29,6 +31,8 @@ async function probe(
           "Mozilla/5.0 (compatible; GrupoDeVendaBot/1.0; +https://localhost)",
       },
     });
+    // não lemos o corpo; libera o socket em vez de deixar o GET baixar a página
+    await res.body?.cancel().catch(() => {});
     return res.status;
   } catch {
     return null;
@@ -42,19 +46,15 @@ export async function isUrlAlive(
 ): Promise<boolean> {
   const timeoutMs = opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const head = await probe(url, "HEAD", timeoutMs);
-  if (head === null) {
-    // rede/timeout no HEAD → tenta GET uma vez
-    const get = await probe(url, "GET", timeoutMs);
-    if (get === null) return false;
-    return decideStatus(get) !== false;
+  if (head !== null) {
+    if (head < 400) return true;
+    if (head === 404 || head === 410) return false;
   }
-  const d = decideStatus(head);
-  if (d === true) return true;
-  if (d === false) return false;
-  // retry-get
+  // HEAD inconclusivo (rede, 405, ou o 503 que a Amazon devolve a TODO HEAD —
+  // inclusive de ASIN válido, o que antes derrubava a fonte inteira).
   const get = await probe(url, "GET", timeoutMs);
   if (get === null) return false;
-  return decideStatus(get) !== false;
+  return aliveByGet(get);
 }
 
 export async function filterAliveOffers(

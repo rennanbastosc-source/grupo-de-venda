@@ -2,9 +2,11 @@ import type { RawOffer, Scraper } from "./types";
 import { scrapeOffersFromUrl } from "./firecrawl";
 import { withSessionRetry } from "./session/ensure";
 
+// goldbox/deals são SPA e servem só banners de cupom (zero /dp/ no HTML).
+// bestsellers renderiza server-side e entrega ~36 produtos reais.
 const DEFAULT_URL =
   process.env.SCRAPE_AMAZON_URL ||
-  "https://www.amazon.com.br/gp/goldbox";
+  "https://www.amazon.com.br/gp/bestsellers";
 
 const HREF =
   /\/dp\/[A-Z0-9]{10}|\/gp\/product\//i;
@@ -24,6 +26,7 @@ async function fetchOffers(): Promise<RawOffer[]> {
     scrapeOffersFromUrl(DEFAULT_URL, {
       hostIncludes: "amazon.com.br",
       hrefPattern: HREF,
+      waitFor: 3000,
       headers: session.cookieHeader
         ? { Cookie: session.cookieHeader }
         : undefined,

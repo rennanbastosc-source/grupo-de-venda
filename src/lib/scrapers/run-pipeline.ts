@@ -61,12 +61,20 @@ export async function runScrape(
     const runId = await store.startRun(src);
     try {
       const scraper = getScraper(src);
-      let raws = (await scraper.fetchOffers()).filter((r) =>
-        isProductOffer(src, r),
-      );
+      const harvested = await scraper.fetchOffers();
+      let raws = harvested.filter((r) => isProductOffer(src, r));
       // mock: sem HEAD externo
       if (process.env.SCRAPE_MOCK !== "1") {
         raws = await filterAliveOffers(raws);
+      }
+      // Zero oferta numa fonte ativa é falha de colheita, não sucesso vazio:
+      // sem isso o run fica verde e o problema passa despercebido no painel.
+      if (raws.length === 0) {
+        throw new Error(
+          harvested.length === 0
+            ? "nenhum link de produto colhido na página (bloqueio, layout mudou ou URL errada)"
+            : `${harvested.length} links colhidos, todos descartados pelo filtro de produto/validação HTTP`,
+        );
       }
       found += raws.length;
       const normalized = dedupeOffers(

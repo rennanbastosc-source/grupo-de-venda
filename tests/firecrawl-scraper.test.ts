@@ -56,7 +56,7 @@ describe("scrapeOffersFromUrl (harvest links+html)", () => {
     );
 
     const [url, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe("https://api.firecrawl.dev/v1/scrape");
+    expect(url).toBe("https://api.firecrawl.dev/v2/scrape");
     expect(init.method).toBe("POST");
     expect(init.headers.Authorization).toBe("Bearer fc-test");
     const body = JSON.parse(init.body);
@@ -151,5 +151,53 @@ describe("scrapeOffersFromUrl (harvest links+html)", () => {
     const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     const body = JSON.parse(init.body);
     expect(body.headers).toEqual({ Cookie: "ssid=abc" });
+  });
+
+  it("envia profile no payload quando opts.profile é fornecido", async () => {
+    process.env.FIRECRAWL_API_KEY = "fc-test";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: { links: ["https://www.amazon.com.br/dp/B0REALASIN12"], html: "" },
+        }),
+      }),
+    );
+    await scrapeOffersFromUrl("https://example.com", {
+      ...AMAZON_OPTS,
+      profile: "shopee-br",
+    });
+    const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(JSON.parse(init.body).profile).toEqual({
+      name: "shopee-br",
+      saveChanges: false,
+    });
+  });
+
+  it("lança em vez de devolver [] quando a página é o paywall de login", async () => {
+    process.env.FIRECRAWL_API_KEY = "fc-test";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: {
+            links: [],
+            html: "<div>Login Necessário</div><p>Faça login para continuar</p>",
+          },
+        }),
+      }),
+    );
+    await expect(
+      scrapeOffersFromUrl("https://shopee.com.br/flash_sale", {
+        hostIncludes: "shopee.com.br",
+        hrefPattern: /i\.\d+\.\d+/i,
+      }),
+    ).rejects.toThrow(/Login Necess/i);
   });
 });
