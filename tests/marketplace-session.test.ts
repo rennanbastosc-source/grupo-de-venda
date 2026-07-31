@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureSession, withSessionRetry } from "@/lib/scrapers/session/ensure";
 import { loadSession, saveSession, listSessionStatuses } from "@/lib/scrapers/session/store";
 import { performLogin } from "@/lib/scrapers/session/login";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 describe("Marketplace Session Management (Fatia 01)", () => {
   const originalEnv = process.env;
@@ -35,23 +36,23 @@ describe("Marketplace Session Management (Fatia 01)", () => {
 
   it("ensureSession reutiliza sessão com status ok sem forçar re-login", async () => {
     process.env.SCRAPE_MOCK = "1";
-    const mockStore = new Map();
+    const mockStore = new Map<string, Record<string, unknown>>();
     const mockSupabase = {
-      from: vi.fn().mockImplementation((table) => ({
+      from: vi.fn().mockImplementation(() => ({
         select: () => ({
-          eq: (col: string, val: string) => ({
+          eq: (_col: string, val: string) => ({
             maybeSingle: async () => {
               const data = mockStore.get(val);
               return { data, error: null };
             },
           }),
         }),
-        upsert: async (payload: any) => {
+        upsert: async (payload: { source: string; [key: string]: unknown }) => {
           mockStore.set(payload.source, payload);
           return { error: null };
         },
       })),
-    } as any;
+    } as unknown as SupabaseClient;
 
     // 1ª vez: salva sessão
     await saveSession(
@@ -97,12 +98,12 @@ describe("Marketplace Session Management (Fatia 01)", () => {
           ],
         }),
       })),
-    } as any;
+    } as unknown as SupabaseClient;
 
     const statuses = await listSessionStatuses(mockSupabase);
     expect(statuses).toHaveLength(3); // mercadolivre, amazon, shopee
     const ml = statuses.find((s) => s.source === "mercadolivre");
     expect(ml?.status).toBe("ok");
-    expect((ml as any).cookies).toBeUndefined();
+    expect((ml as Record<string, unknown>).cookies).toBeUndefined();
   });
 });

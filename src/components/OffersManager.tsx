@@ -50,10 +50,6 @@ export function OffersManager() {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    void loadSessions();
-  }, [loadSessions]);
-
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -75,9 +71,10 @@ export function OffersManager() {
   useEffect(() => {
     const t = setTimeout(() => {
       void load();
+      void loadSessions();
     }, 0);
     return () => clearTimeout(t);
-  }, [load]);
+  }, [load, loadSessions]);
 
   useEffect(() => {
     void fetch("/api/affiliate-providers")

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/scrape/sessions/route";
 import * as apiAuth from "@/lib/api-auth";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 vi.mock("@/lib/api-auth", () => ({
   requireUser: vi.fn(),
@@ -12,7 +13,7 @@ describe("GET /api/scrape/sessions (Fatia 03)", () => {
       error: new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
       }),
-    } as any);
+    } as unknown as { error: Response; user: User; supabase: SupabaseClient });
 
     const res = await GET();
     expect(res.status).toBe(401);
@@ -28,19 +29,20 @@ describe("GET /api/scrape/sessions (Fatia 03)", () => {
           ],
         }),
       })),
-    } as any;
+    } as unknown as SupabaseClient;
 
     vi.spyOn(apiAuth, "requireUser").mockResolvedValue({
-      user: { id: "u1" },
+      error: undefined,
+      user: { id: "u1" } as User,
       supabase: mockSupabase,
-    } as any);
+    } as unknown as { error?: Response; user: User; supabase: SupabaseClient });
 
     const res = await GET();
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as { sessions: Array<Record<string, unknown>> };
 
     expect(data.sessions).toHaveLength(3); // mercadolivre, amazon, shopee
-    const sources = data.sessions.map((s: any) => s.source);
+    const sources = data.sessions.map((s) => s.source);
     expect(sources).toContain("mercadolivre");
     expect(sources).toContain("amazon");
     expect(sources).toContain("shopee");
