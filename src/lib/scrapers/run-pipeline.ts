@@ -1,5 +1,6 @@
 import { dedupeOffers } from "./dedupe";
 import { canonicalizeUrl } from "./normalize";
+import { isProductOffer } from "./product-filter";
 import { getScraper, listActiveScrapeSources } from "./registry";
 import type { NormalizedOffer, RawOffer, ScrapeSource } from "./types";
 
@@ -59,7 +60,9 @@ export async function runScrape(
     const runId = await store.startRun(src);
     try {
       const scraper = getScraper(src);
-      const raws = await scraper.fetchOffers();
+      const raws = (await scraper.fetchOffers()).filter((r) =>
+        isProductOffer(src, r),
+      );
       found += raws.length;
       const normalized = dedupeOffers(
         raws

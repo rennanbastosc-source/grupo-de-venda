@@ -16,3 +16,9 @@
 - Invariantes: scrape de ofertas de marketplaces via Firecrawl server-side; `FIRECRAWL_API_KEY` apenas em env/server (nunca no client bundle nem no git); `SCRAPE_MOCK=1` para CI e dev local sem gastar créditos; ofertas scrapadas entram com `status=new` no Supabase para filtro/aprovação no dashboard; Magalu permanece stub.
 - Modelos: inalterados (`offers`, `scrape_runs`, enum `scrape_source`).
 - Decisões: client `scrapeOffersFromUrl` via `fetch` server-only com extract schema JSON único; max 15 ofertas por fonte por run; fontes ativas Mercado Livre, Amazon e Shopee.
+
+### scrape-auth-sessao  ·  2026-07-30  ·  PR #12
+- Invariantes: login automático por marketplace via envs (`ML_*`, `AMZN_*`, `SHOP_*`); sessão persistida no DB (`marketplace_sessions`); self-heal 1 retry em falhas de sessão mid-run; filtro anti-lixo (`isProductOffer`) descarta menus ("Já tenho conta"), banners de cupons genéricos da Amazon e URLs inválidas da Shopee; `SCRAPE_MOCK=1` não chama login nem scrape externo; cookies/credenciais nunca vazam para o client.
+- Modelos: `marketplace_sessions` (cookies, status, last_error, updated_at).
+- Decisões: Cookie Header injetado no payload do Firecrawl `scrapeOffersFromUrl`; reativação da Shopee em `listActiveScrapeSources()`; endpoint público de status `GET /api/scrape/sessions` sem cookies; chips de status por loja em `OffersManager`.
+
