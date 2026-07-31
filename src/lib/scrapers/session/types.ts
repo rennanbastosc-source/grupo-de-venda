@@ -1,6 +1,6 @@
 export type MarketplaceSource = "mercadolivre" | "amazon" | "shopee";
 
-export type SessionStatus = "ok" | "expired" | "error" | "unknown";
+export type SessionStatus = "ok" | "expired" | "error" | "unauthenticated" | "unknown";
 
 export type PlatformSession = {
   source: MarketplaceSource;
