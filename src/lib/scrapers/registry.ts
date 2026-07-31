@@ -1,14 +1,12 @@
 import { amazonScraper } from "./amazon";
 import { mercadolivreScraper } from "./mercadolivre";
 import { shopeeScraper } from "./shopee";
-import { magaluScraper } from "./stubs";
 import type { ScrapeSource, Scraper } from "./types";
 
 const scrapers: Scraper[] = [
   mercadolivreScraper,
   amazonScraper,
   shopeeScraper,
-  magaluScraper,
 ];
 
 export function getScraper(source: Exclude<ScrapeSource, "manual">): Scraper {

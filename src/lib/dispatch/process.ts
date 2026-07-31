@@ -75,10 +75,11 @@ export async function processDispatchQueue(
   );
   const hourStart = new Date(now.getTime() - 60 * 60 * 1000);
 
+  let daily = await countSentSince(supabase, dayStart.toISOString());
+  let hourly = await countSentSince(supabase, hourStart.toISOString());
+  let last = await lastSentAt(supabase);
+
   for (let i = 0; i < maxJobs; i++) {
-    const daily = await countSentSince(supabase, dayStart.toISOString());
-    const hourly = await countSentSince(supabase, hourStart.toISOString());
-    const last = await lastSentAt(supabase);
     const gate = canSendNow(
       { daily, hourly, lastSentAt: last },
       settings,
@@ -165,6 +166,9 @@ export async function processDispatchQueue(
       .eq("id", job.offer_id);
 
     result.sent += 1;
+    daily += 1;
+    hourly += 1;
+    last = now;
   }
 
   return result;

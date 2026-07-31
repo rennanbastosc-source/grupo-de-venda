@@ -13,7 +13,6 @@ const SOURCES = new Set<ScrapeSource>([
   "mercadolivre",
   "amazon",
   "shopee",
-  "magalu",
   "manual",
 ]);
 
