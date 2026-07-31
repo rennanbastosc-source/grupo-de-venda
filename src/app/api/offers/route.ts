@@ -23,25 +23,48 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const source = searchParams.get("source");
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "30", 10)));
+  const offset = (page - 1) * limit;
+
+  let countQuery = auth.supabase
+    .from("offers")
+    .select("*", { count: "exact", head: true });
 
   let q = auth.supabase
     .from("offers")
     .select("*")
     .order("scraped_at", { ascending: false })
-    .limit(100);
+    .range(offset, offset + limit - 1);
 
   if (status && STATUSES.has(status as OfferStatus)) {
+    countQuery = countQuery.eq("status", status);
     q = q.eq("status", status);
   }
   if (source && SOURCES.has(source as ScrapeSource)) {
+    countQuery = countQuery.eq("source", source);
     q = q.eq("source", source);
   }
 
-  const { data, error } = await q;
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const [{ count, error: countErr }, { data, error }] = await Promise.all([
+    countQuery,
+    q,
+  ]);
+
+  if (countErr || error) {
+    return NextResponse.json(
+      { error: (countErr || error)?.message },
+      { status: 500 },
+    );
   }
-  return NextResponse.json({ offers: data ?? [] });
+
+  return NextResponse.json({
+    offers: data ?? [],
+    total: count ?? 0,
+    page,
+    limit,
+    totalPages: Math.ceil((count ?? 0) / limit),
+  });
 }
 
 export async function POST(request: Request) {

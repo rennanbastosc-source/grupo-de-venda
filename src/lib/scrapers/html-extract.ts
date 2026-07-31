@@ -33,7 +33,7 @@ export function extractOffersFromHtml(
     if (seen.has(href)) continue;
     seen.add(href);
     const inner = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    const title = (inner.slice(0, 200) || titleFromUrl(href)).slice(0, 240);
+    const title = cleanTitle(inner.slice(0, 200), href).slice(0, 240);
     const priceCents = parsePriceToCents(inner);
     out.push({ title, url: href, priceCents });
   }
@@ -43,11 +43,37 @@ export function extractOffersFromHtml(
 export function titleFromUrl(url: string): string {
   try {
     const u = new URL(url);
-    const seg = u.pathname.split("/").filter(Boolean).pop() || url;
-    return decodeURIComponent(seg).replace(/[-_+]/g, " ").slice(0, 240);
+    const pathname = u.pathname.replace(/\/$/, "");
+    const segments = pathname.split("/").filter(Boolean);
+
+    // Se houver /dp/ASIN ou /gp/product/ASIN na URL
+    const dpIdx = segments.findIndex(
+      (s) => s.toLowerCase() === "dp" || s.toLowerCase() === "product",
+    );
+    if (dpIdx > 0) {
+      const slug = segments[dpIdx - 1];
+      if (slug) {
+        return decodeURIComponent(slug).replace(/[-_+]/g, " ").slice(0, 240);
+      }
+    }
+
+    const lastSeg = segments[segments.length - 1] || "";
+    return decodeURIComponent(lastSeg).replace(/[-_+]/g, " ").slice(0, 240);
   } catch {
     return url.slice(0, 240);
   }
+}
+
+// Trata títulos incompletos/numéricos (ex: ASIN puro ou IDs da Amazon)
+export function cleanTitle(title: string, url: string): string {
+  const t = title.trim();
+  if (!t || /^[A-Z0-9]{10}$/i.test(t) || /^[\d\s-_]+$/.test(t) || t.startsWith("http")) {
+    const extracted = titleFromUrl(url);
+    if (extracted && !/^[A-Z0-9]{10}$/i.test(extracted) && !/^[\d\s-_]+$/.test(extracted)) {
+      return extracted;
+    }
+  }
+  return t || titleFromUrl(url);
 }
 
 /** Merge HTML harvest + raw link list; HTML titles win on same URL. */
@@ -81,7 +107,7 @@ export function harvestOffers(
     if (!href.includes(opts.hostIncludes)) continue;
     if (!opts.hrefPattern.test(href)) continue;
     if (byUrl.has(href)) continue;
-    byUrl.set(href, { title: titleFromUrl(href), url: href });
+    byUrl.set(href, { title: cleanTitle("", href), url: href });
   }
 
   return [...byUrl.values()].slice(0, max);

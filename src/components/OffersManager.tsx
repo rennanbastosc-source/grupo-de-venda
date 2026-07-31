@@ -20,10 +20,43 @@ function formatPrice(cents: number | null) {
   });
 }
 
+function getStatusBadge(status: string) {
+  switch (status) {
+    case "approved":
+      return "bg-lime text-ink border-ink";
+    case "rejected":
+      return "bg-danger text-white border-ink";
+    case "sent":
+      return "bg-ice-deep text-ink border-ink";
+    default:
+      return "bg-white text-ink border-ink";
+  }
+}
+
+function getSourceBadge(source: string) {
+  switch (source) {
+    case "mercadolivre":
+      return "bg-[#fff059] text-ink";
+    case "amazon":
+      return "bg-[#ff9900] text-ink";
+    case "shopee":
+      return "bg-[#ee4d2d] text-white";
+    case "magalu":
+      return "bg-[#0086ff] text-white";
+    default:
+      return "bg-ice text-ink";
+  }
+}
+
 export function OffersManager() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [status, setStatus] = useState("");
   const [source, setSource] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(30);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -57,16 +90,21 @@ export function OffersManager() {
       const qs = new URLSearchParams();
       if (status) qs.set("status", status);
       if (source) qs.set("source", source);
+      qs.set("page", String(page));
+      qs.set("limit", String(limit));
+
       const res = await fetch(`/api/offers?${qs}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao listar");
       setOffers(data.offers ?? []);
+      setTotal(data.total ?? 0);
+      setTotalPages(data.totalPages ?? 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
       setLoading(false);
     }
-  }, [status, source]);
+  }, [status, source, page, limit]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -176,51 +214,56 @@ export function OffersManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          <span className="b-label">Status</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="b-input !mt-1 !w-auto"
+      {/* Barra de Filtros & Ações Rápidas */}
+      <div className="flex flex-wrap items-end justify-between gap-4 border-[3px] border-ink bg-white p-4 shadow-brutal">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-sm">
+            <span className="b-label">Status</span>
+            <select
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
+              className="b-input !mt-1 !w-auto"
+            >
+              <option value="">Todos</option>
+              <option value="new">Novas (new)</option>
+              <option value="approved">Aprovadas (approved)</option>
+              <option value="rejected">Rejeitadas (rejected)</option>
+              <option value="sent">Enviadas (sent)</option>
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="b-label">Fonte</span>
+            <select
+              value={source}
+              onChange={(e) => {
+                setSource(e.target.value);
+                setPage(1);
+              }}
+              className="b-input !mt-1 !w-auto"
+            >
+              <option value="">Todas</option>
+              <option value="mercadolivre">Mercado Livre</option>
+              <option value="amazon">Amazon</option>
+              <option value="shopee">Shopee</option>
+              <option value="magalu">Magalu</option>
+              <option value="manual">Manual</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void runScrapeNow()}
+            className="b-btn !py-2"
           >
-            <option value="">Todos</option>
-            <option value="new">new</option>
-            <option value="approved">approved</option>
-            <option value="rejected">rejected</option>
-            <option value="sent">sent</option>
-          </select>
-        </label>
-        <label className="text-sm">
-          <span className="b-label">Fonte</span>
-          <select
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            className="b-input !mt-1 !w-auto"
-          >
-            <option value="">Todas</option>
-            <option value="mercadolivre">mercadolivre</option>
-            <option value="amazon">amazon</option>
-            <option value="shopee">shopee</option>
-            <option value="magalu">magalu</option>
-            <option value="manual">manual</option>
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="b-btn b-btn-ghost !py-1.5"
-        >
-          Filtrar
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void runScrapeNow()}
-          className="b-btn !py-1.5"
-        >
-          Rodar scrap agora
-        </button>
+            Rodar scrap agora
+          </button>
+        </div>
       </div>
 
       {sessions.length > 0 ? (
@@ -247,15 +290,16 @@ export function OffersManager() {
       ) : null}
 
       {scrapeMsg ? (
-        <p className="text-sm text-muted" role="status">
+        <p className="text-sm font-bold text-ink" role="status">
           {scrapeMsg}
         </p>
       ) : null}
       {linkMsg ? (
-        <p className="text-sm text-muted" role="status">
+        <p className="text-sm font-bold text-ink" role="status">
           {linkMsg}
         </p>
       ) : null}
+
       {providers.some((p) => p.active) ? (
         <label className="block text-sm">
           <span className="b-label">Provider afiliado (padrão)</span>
@@ -275,12 +319,13 @@ export function OffersManager() {
         </label>
       ) : null}
 
+      {/* Formulário Manual Retrátil / Card */}
       <form
         onSubmit={onManual}
         className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-2"
       >
         <h2 className="text-sm font-black uppercase tracking-tight text-ink sm:col-span-2">
-          Oferta manual
+          Adicionar Oferta Manual
         </h2>
         <label className="block text-sm sm:col-span-2">
           <span className="b-label">Título</span>
@@ -289,6 +334,7 @@ export function OffersManager() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="b-input"
+            placeholder="Ex: Fone de Ouvido Bluetooth"
           />
         </label>
         <label className="block text-sm sm:col-span-2">
@@ -299,6 +345,7 @@ export function OffersManager() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="b-input"
+            placeholder="https://..."
           />
         </label>
         <label className="block text-sm">
@@ -307,6 +354,7 @@ export function OffersManager() {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             className="b-input"
+            placeholder="99.90"
           />
         </label>
         <div className="flex items-end">
@@ -326,77 +374,158 @@ export function OffersManager() {
         </p>
       ) : null}
 
+      {/* Quadro Resumo de Ofertas */}
       {loading ? (
-        <p className="text-sm text-muted">Carregando ofertas…</p>
+        <div className="border-[3px] border-ink bg-white p-6 shadow-brutal text-center">
+          <p className="text-sm font-bold text-ink">Carregando ofertas…</p>
+        </div>
       ) : offers.length === 0 ? (
-        <p className="text-sm text-muted">Nenhuma oferta.</p>
+        <div className="border-[3px] border-ink bg-white p-6 shadow-brutal text-center">
+          <p className="text-sm font-bold text-ink">Nenhuma oferta encontrada.</p>
+        </div>
       ) : (
-        <div className="overflow-x-auto border-[3px] border-ink bg-white shadow-brutal">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b-2 border-ink bg-lime text-ink">
-              <tr>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Título</th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Fonte</th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Preço</th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {offers.map((o) => (
-                <tr key={o.id} className="border-b border-[#e5e5dc]">
-                  <td className="max-w-xs truncate px-3 py-2">
-                    <a
-                      href={o.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-ink font-bold underline decoration-2 underline-offset-2"
-                    >
-                      {o.title}
-                    </a>
-                  </td>
-                  <td className="px-3 py-2">{o.source}</td>
-                  <td className="px-3 py-2">{formatPrice(o.price_cents)}</td>
-                  <td className="px-3 py-2">{o.status}</td>
-                  <td className="space-x-2 px-3 py-2">
-                    {o.status !== "approved" ? (
-                      <button
-                        type="button"
-                        className="text-ok font-bold underline decoration-2 underline-offset-2"
-                        onClick={() => void setOfferStatus(o.id, "approved")}
-                      >
-                        Aprovar
-                      </button>
-                    ) : null}
-                    {o.status !== "rejected" ? (
-                      <button
-                        type="button"
-                        className="text-danger font-bold underline decoration-2 underline-offset-2"
-                        onClick={() => void setOfferStatus(o.id, "rejected")}
-                      >
-                        Rejeitar
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="text-ink-soft font-bold underline decoration-2 underline-offset-2"
-                      onClick={() => void emitAffiliate(o.id)}
-                    >
-                      Gerar link afiliado
-                    </button>
-                    {o.status === "approved" ? (
-                      <a
-                        href="/dashboard/disparos"
-                        className="text-ink-soft font-bold underline decoration-2 underline-offset-2"
-                      >
-                        Disparar
-                      </a>
-                    ) : null}
-                  </td>
+        <div className="space-y-4">
+          <div className="overflow-x-auto border-[3px] border-ink bg-white shadow-brutal">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b-[3px] border-ink bg-lime text-ink">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-black uppercase tracking-wider">
+                    Oferta
+                  </th>
+                  <th className="px-4 py-3 text-xs font-black uppercase tracking-wider">
+                    Fonte
+                  </th>
+                  <th className="px-4 py-3 text-xs font-black uppercase tracking-wider">
+                    Preço
+                  </th>
+                  <th className="px-4 py-3 text-xs font-black uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wider">
+                    Ações
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y-2 divide-ink">
+                {offers.map((o) => (
+                  <tr key={o.id} className="hover:bg-ice/50 transition-colors">
+                    <td className="max-w-md px-4 py-3">
+                      <a
+                        href={o.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-ink hover:underline line-clamp-2"
+                        title={o.title}
+                      >
+                        {o.title}
+                      </a>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span
+                        className={`inline-block border-[2px] border-ink px-2 py-0.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_#000] ${getSourceBadge(
+                          o.source,
+                        )}`}
+                      >
+                        {o.source}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-bold text-ink whitespace-nowrap">
+                      {formatPrice(o.price_cents)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span
+                        className={`inline-block border-[2px] px-2 py-0.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_#000] ${getStatusBadge(
+                          o.status,
+                        )}`}
+                      >
+                        {o.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        {o.status !== "approved" ? (
+                          <button
+                            type="button"
+                            className="b-btn !bg-lime !text-ink !px-3 !py-1 !text-xs shadow-[2px_2px_0px_#000]"
+                            onClick={() => void setOfferStatus(o.id, "approved")}
+                          >
+                            Aceitar
+                          </button>
+                        ) : null}
+                        {o.status !== "rejected" ? (
+                          <button
+                            type="button"
+                            className="b-btn !bg-danger !text-white !px-3 !py-1 !text-xs shadow-[2px_2px_0px_#000]"
+                            onClick={() => void setOfferStatus(o.id, "rejected")}
+                          >
+                            Rejeitar
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="b-btn b-btn-ghost !px-3 !py-1 !text-xs shadow-[2px_2px_0px_#000]"
+                          onClick={() => void emitAffiliate(o.id)}
+                          title="Gerar link de afiliado"
+                        >
+                          Afiliado
+                        </button>
+                        {o.status === "approved" ? (
+                          <a
+                            href="/dashboard/disparos"
+                            className="b-btn !bg-ice-deep !text-ink !px-3 !py-1 !text-xs shadow-[2px_2px_0px_#000]"
+                          >
+                            Disparar
+                          </a>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Controles de Paginação */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-[3px] border-ink bg-white p-4 shadow-brutal">
+            <div className="flex items-center gap-2 text-sm font-bold text-ink">
+              <span>Mostrar</span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="b-input !py-1 !px-2 !w-auto"
+              >
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>por página (Total: {total})</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="b-btn b-btn-ghost !px-3 !py-1 disabled:opacity-50"
+              >
+                ← Voltar
+              </button>
+              <span className="text-sm font-black uppercase text-ink">
+                Página {page} de {totalPages || 1}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="b-btn b-btn-ghost !px-3 !py-1 disabled:opacity-50"
+              >
+                Avançar →
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

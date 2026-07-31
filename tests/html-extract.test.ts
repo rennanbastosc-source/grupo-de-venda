@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  cleanTitle,
   extractOffersFromHtml,
   harvestOffers,
+  titleFromUrl,
 } from "@/lib/scrapers/html-extract";
 
 describe("html-extract", () => {
@@ -40,5 +42,19 @@ describe("html-extract", () => {
     );
     expect(offers).toHaveLength(1);
     expect(offers[0].title).toBe("Fone Shopee");
+  });
+
+  it("titleFromUrl extrai slug do produto da Amazon quando URL termina em ASIN", () => {
+    const urlWithSlug = "https://www.amazon.com.br/Fone-de-Ouvido-Bluetooth-Sem-Fio/dp/B0876MJBG6";
+    expect(titleFromUrl(urlWithSlug)).toBe("Fone de Ouvido Bluetooth Sem Fio");
+
+    const urlDirectAsin = "https://www.amazon.com.br/dp/B0876MJBG6";
+    expect(titleFromUrl(urlDirectAsin)).toBe("B0876MJBG6");
+  });
+
+  it("cleanTitle substitui títulos numéricos ou vazios pelo slug da URL da Amazon", () => {
+    const urlWithSlug = "https://www.amazon.com.br/Fone-de-Ouvido-Bluetooth-Sem-Fio/dp/B0876MJBG6";
+    expect(cleanTitle("135 4144914 5222909", urlWithSlug)).toBe("Fone de Ouvido Bluetooth Sem Fio");
+    expect(cleanTitle("B0876MJBG6", urlWithSlug)).toBe("Fone de Ouvido Bluetooth Sem Fio");
   });
 });
