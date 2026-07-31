@@ -7,6 +7,10 @@ export async function ensureSession(
   source: MarketplaceSource,
   opts?: { customSupabase?: SupabaseClient; forceLogin?: boolean },
 ): Promise<PlatformSession> {
+  if (process.env.SCRAPE_MOCK === "1" && !opts?.customSupabase) {
+    return performLogin(source);
+  }
+
   if (!opts?.forceLogin) {
     const existing = await loadSession(source, opts?.customSupabase);
     if (
