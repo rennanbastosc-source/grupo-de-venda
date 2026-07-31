@@ -123,6 +123,13 @@
 
 ## 6. Checkpoint de Execução
 - **Status:** `CONCLUÍDO`
-- **Concluído:** firecrawl harvest links+html; html-extract; url-alive; run-pipeline gate (skip mock); wire ML/Amazon/Shopee; testes; lint/tsc/test verdes
+- **Concluído (as-built):**
+  - `scrapeOffersFromUrl(url, { hostIncludes, hrefPattern, max?, headers?, waitFor? })` — `formats: ["links","html"]`, sem extract LLM
+  - `html-extract.ts`: `extractOffersFromHtml` + `harvestOffers` (HTML título vence; links fallback slug)
+  - `url-alive.ts`: HEAD→GET; 404/410 drop; 401/403/429 keep; rede/timeout drop item
+  - `run-pipeline`: `isProductOffer` → `filterAliveOffers` se `SCRAPE_MOCK≠1` → normalize/upsert
+  - Scrapers ML/Amazon/Shopee: padrões de URL; Amazon default `gp/goldbox`; Shopee `waitFor: 2500`
+  - Fix colateral: `worker/src/baileys/phone.ts` cópia local de `normalizePhone` (rootDir worker sem import app)
+  - Testes: firecrawl-scraper, html-extract, url-alive; suíte 106; worker:typecheck verde
 - **Pendente:** —
-- **Próximo comando:** `/sdd-validate`
+- **Próximo comando:** `/sdd-plan <nova-feature>` (pós-merge)

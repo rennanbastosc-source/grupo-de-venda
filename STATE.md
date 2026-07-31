@@ -22,3 +22,8 @@
 - Modelos: `marketplace_sessions` (cookies, status, last_error, updated_at).
 - Decisões: Cookie Header injetado no payload do Firecrawl `scrapeOffersFromUrl`; reativação da Shopee em `listActiveScrapeSources()`; endpoint público de status `GET /api/scrape/sessions` sem cookies; chips de status por loja em `OffersManager`.
 
+### scrape-links-reais  ·  2026-07-31  ·  PR #13
+- Invariantes: scrape grava só hrefs presentes na página (Firecrawl `links`+`html`, sem extract LLM); `isProductOffer` + validação HTTP (404/410 drop; 403 keep) antes do upsert; `SCRAPE_MOCK=1` sem Firecrawl nem HEAD externo; contrato `runScrape` inalterado; secrets só server.
+- Modelos: inalterados (`offers`, `scrape_runs`).
+- Decisões: harvest via `html-extract`/`harvestOffers`; `url-alive` com paralelismo limitado; Amazon default `gp/goldbox`; worker `normalizePhone` local (sem import cross-package app→worker).
+
