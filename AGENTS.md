@@ -162,3 +162,19 @@ Placeholders `NEXT_PUBLIC_SUPABASE_*=https://ci.supabase.co` **só** nos jobs `q
 - Disparo: sessão WA `connected` + grupo `active` + `affiliate_links` status `ok`; rate limits em `app_settings`; sem reenvio offer+group no mesmo dia UTC.
 - Secrets só server/env — nunca client.
 - Detalhe as-built: `STATE.md` + `docs/specs/`.
+
+## 14. Auto-Questionamento e Validação Defensiva (Obrigatório)
+
+Antes de declarar qualquer tarefa como concluída ou subir um PR/commit:
+
+1. **Questionamento de Degradação Graciosa (Fallback)**:
+   - *"E se as variáveis de ambiente opcionais (`*_LOGIN`, `*_PASS`, etc.) estivem ausentes na produção?"*
+   - O código DEVE degradar graciosamente (ex: modo público sem cookies) em vez de lançar exceções fatais que quebram o fluxo principal.
+2. **Questionamento do Fluxo Completo de Ponta a Ponta**:
+   - *"Se o usuário clicar no botão agora sem nenhuma env opcional configurada, a UI vai quebrar ou vai funcionar?"*
+   - Testar não apenas que os testes unitários passam, mas que o comportamento em runtime não gera mensagens de erro impeditivas ou badges travadas em `UNKNOWN`/`ERROR`.
+3. **Questionamento de Rede e Mocks no CI**:
+   - *"Minha implementação faz chamadas de rede externas ou toca no banco que podem dar timeout no CI ou falhar no build?"*
+   - Verificar se `ci.supabase.co` ou `SCRAPE_MOCK=1` estão tratados em todas as camadas de armazenamento/infraestrutura.
+4. **Verificação Dupla dos Efeitos Colaterais**:
+   - Se uma função falhar internamente, os seletores/stores atualizam a UI com o motivo legível em vez de falhar silenciosamente ou manter o estado desatualizado?
