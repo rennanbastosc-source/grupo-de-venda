@@ -1,4 +1,5 @@
-/** Normaliza telefone BR/E.164 para dígitos (ex: 5511999999999). */
+/** Normaliza telefone BR/E.164 para dígitos (ex: 5511999999999).
+ * Cópia local do app `src/lib/wa/phone` — worker package separado (rootDir). */
 export function normalizePhone(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
   if (!digits) return null;

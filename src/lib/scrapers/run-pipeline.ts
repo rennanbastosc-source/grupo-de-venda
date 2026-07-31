@@ -3,6 +3,7 @@ import { canonicalizeUrl } from "./normalize";
 import { isProductOffer } from "./product-filter";
 import { getScraper, listActiveScrapeSources } from "./registry";
 import type { NormalizedOffer, RawOffer, ScrapeSource } from "./types";
+import { filterAliveOffers } from "./url-alive";
 
 export type OfferStore = {
   upsertOffer: (
@@ -60,9 +61,13 @@ export async function runScrape(
     const runId = await store.startRun(src);
     try {
       const scraper = getScraper(src);
-      const raws = (await scraper.fetchOffers()).filter((r) =>
+      let raws = (await scraper.fetchOffers()).filter((r) =>
         isProductOffer(src, r),
       );
+      // mock: sem HEAD externo
+      if (process.env.SCRAPE_MOCK !== "1") {
+        raws = await filterAliveOffers(raws);
+      }
       found += raws.length;
       const normalized = dedupeOffers(
         raws

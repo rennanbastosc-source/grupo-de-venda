@@ -1,7 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { scrapeOffersFromUrl } from "@/lib/scrapers/firecrawl";
 
-describe("scrapeOffersFromUrl", () => {
+const AMAZON_OPTS = {
+  hostIncludes: "amazon.com.br",
+  hrefPattern: /\/dp\/[A-Z0-9]{10}|\/gp\/product\//i,
+};
+
+const ML_OPTS = {
+  hostIncludes: "mercadolivre.com.br",
+  hrefPattern: /\/p\/MLB|\/up\/MLB|MLB\d+/i,
+};
+
+describe("scrapeOffersFromUrl (harvest links+html)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.FIRECRAWL_API_KEY;
@@ -9,11 +19,11 @@ describe("scrapeOffersFromUrl", () => {
 
   it("throws without API key", async () => {
     await expect(
-      scrapeOffersFromUrl("https://example.com", "extraia ofertas"),
+      scrapeOffersFromUrl("https://example.com", AMAZON_OPTS),
     ).rejects.toThrow(/FIRECRAWL_API_KEY/);
   });
 
-  it("maps extract.offers from Firecrawl response", async () => {
+  it("harvests product links from data.links without extract", async () => {
     process.env.FIRECRAWL_API_KEY = "fc-test";
     vi.stubGlobal(
       "fetch",
@@ -23,35 +33,61 @@ describe("scrapeOffersFromUrl", () => {
         json: async () => ({
           success: true,
           data: {
-            extract: {
-              offers: [
-                {
-                  title: "Fone BT",
-                  url: "https://www.mercadolivre.com.br/fone/p/MLB1",
-                  priceCents: 9990,
-                  externalId: "MLB1",
-                },
-              ],
-            },
+            links: [
+              "https://www.amazon.com.br/dp/B0REALASIN12",
+              "https://www.amazon.com.br/b?node=16215715011",
+              "https://www.amazon.com.br/gp/product/B0876MJBG6",
+            ],
+            html: "",
           },
         }),
       }),
     );
     const offers = await scrapeOffersFromUrl(
-      "https://lista.mercadolivre.com.br/ofertas",
-      "extraia ofertas",
+      "https://www.amazon.com.br/gp/goldbox",
+      AMAZON_OPTS,
     );
-    expect(offers).toHaveLength(1);
-    expect(offers[0].title).toBe("Fone BT");
-    expect(offers[0].priceCents).toBe(9990);
+    expect(offers).toHaveLength(2);
+    expect(offers.map((o) => o.url)).toContain(
+      "https://www.amazon.com.br/dp/B0REALASIN12",
+    );
+    expect(offers.map((o) => o.url)).not.toContain(
+      "https://www.amazon.com.br/b?node=16215715011",
+    );
+
     const [url, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toBe("https://api.firecrawl.dev/v1/scrape");
     expect(init.method).toBe("POST");
     expect(init.headers.Authorization).toBe("Bearer fc-test");
     const body = JSON.parse(init.body);
-    expect(body.url).toContain("mercadolivre");
-    expect(body.formats).toContain("extract");
-    expect(body.extract.schema).toBeDefined();
+    expect(body.formats).toEqual(expect.arrayContaining(["links", "html"]));
+    expect(body.formats).not.toContain("extract");
+    expect(body.extract).toBeUndefined();
+  });
+
+  it("prefers title from html anchors", async () => {
+    process.env.FIRECRAWL_API_KEY = "fc-test";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: {
+            links: [],
+            html: `<a href="https://www.mercadolivre.com.br/fone/p/MLB1">Fone BT</a>`,
+          },
+        }),
+      }),
+    );
+    const offers = await scrapeOffersFromUrl(
+      "https://www.mercadolivre.com.br/ofertas",
+      ML_OPTS,
+    );
+    expect(offers).toHaveLength(1);
+    expect(offers[0].title).toBe("Fone BT");
+    expect(offers[0].url).toContain("/p/MLB1");
   });
 
   it("throws on non-OK HTTP", async () => {
@@ -66,39 +102,17 @@ describe("scrapeOffersFromUrl", () => {
       }),
     );
     await expect(
-      scrapeOffersFromUrl("https://example.com", "x"),
+      scrapeOffersFromUrl("https://example.com", AMAZON_OPTS),
     ).rejects.toThrow(/402/);
-  });
-
-  it("coerces fractional price in reais to cents", async () => {
-    process.env.FIRECRAWL_API_KEY = "fc-test";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          data: {
-            extract: {
-              offers: [
-                { title: "Mouse", url: "https://x.com/p", priceCents: 49.9 },
-              ],
-            },
-          },
-        }),
-      }),
-    );
-    const offers = await scrapeOffersFromUrl("https://x.com", "x");
-    expect(offers[0].priceCents).toBe(4990);
   });
 
   it("caps max offers", async () => {
     process.env.FIRECRAWL_API_KEY = "fc-test";
-    const many = Array.from({ length: 30 }, (_, i) => ({
-      title: `Item ${i}`,
-      url: `https://example.com/p/${i}`,
-    }));
+    const many = Array.from(
+      { length: 30 },
+      (_, i) =>
+        `https://www.amazon.com.br/dp/B0${String(i).padStart(8, "0")}`,
+    );
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -106,13 +120,14 @@ describe("scrapeOffersFromUrl", () => {
         status: 200,
         json: async () => ({
           success: true,
-          data: { extract: { offers: many } },
+          data: { links: many, html: "" },
         }),
       }),
     );
-    const offers = await scrapeOffersFromUrl("https://example.com", "x", {
-      max: 15,
-    });
+    const offers = await scrapeOffersFromUrl(
+      "https://www.amazon.com.br/gp/goldbox",
+      { ...AMAZON_OPTS, max: 15 },
+    );
     expect(offers).toHaveLength(15);
   });
 
@@ -125,11 +140,12 @@ describe("scrapeOffersFromUrl", () => {
         status: 200,
         json: async () => ({
           success: true,
-          data: { extract: { offers: [] } },
+          data: { links: [], html: "" },
         }),
       }),
     );
-    await scrapeOffersFromUrl("https://example.com", "x", {
+    await scrapeOffersFromUrl("https://example.com", {
+      ...AMAZON_OPTS,
       headers: { Cookie: "ssid=abc" },
     });
     const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];

@@ -1,64 +1,48 @@
 import type { RawOffer } from "./types";
+import { harvestOffers } from "./html-extract";
 
 const API = "https://api.firecrawl.dev/v1/scrape";
 
-const OFFER_SCHEMA = {
-  type: "object",
-  properties: {
-    offers: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          title: { type: "string" },
-          url: { type: "string" },
-          priceCents: { type: "number" },
-          imageUrl: { type: "string" },
-          externalId: { type: "string" },
-        },
-        required: ["title", "url"],
-      },
-    },
-  },
-  required: ["offers"],
-} as const;
-
 export type FirecrawlOffer = RawOffer;
 
-function coercePriceCents(v: unknown): number | undefined {
-  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return undefined;
-  if (!Number.isInteger(v) || v < 500) {
-    return Math.round(v * 100);
-  }
-  return Math.round(v);
-}
+export type ScrapeOffersOpts = {
+  hostIncludes: string;
+  hrefPattern: RegExp;
+  max?: number;
+  signal?: AbortSignal;
+  headers?: Record<string, string>;
+  waitFor?: number;
+};
 
+/**
+ * Harvest product links from a marketplace page via Firecrawl links+html.
+ * No LLM extract — only hrefs present on the page.
+ */
 export async function scrapeOffersFromUrl(
   targetUrl: string,
-  prompt: string,
-  opts?: { max?: number; signal?: AbortSignal; headers?: Record<string, string> },
+  opts: ScrapeOffersOpts,
 ): Promise<FirecrawlOffer[]> {
   const key = process.env.FIRECRAWL_API_KEY?.trim();
   if (!key) throw new Error("FIRECRAWL_API_KEY ausente");
 
-  const max = opts?.max ?? 15;
+  const max = opts.max ?? 15;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 45_000);
-  const signal = opts?.signal ?? ctrl.signal;
+  const signal = opts.signal ?? ctrl.signal;
 
   try {
     const payload: Record<string, unknown> = {
       url: targetUrl,
-      formats: ["extract"],
+      formats: ["links", "html"],
       onlyMainContent: true,
       timeout: 40000,
-      extract: {
-        prompt,
-        schema: OFFER_SCHEMA,
-      },
     };
 
-    if (opts?.headers && Object.keys(opts.headers).length > 0) {
+    if (opts.waitFor != null && opts.waitFor > 0) {
+      payload.waitFor = opts.waitFor;
+    }
+
+    if (opts.headers && Object.keys(opts.headers).length > 0) {
       payload.headers = opts.headers;
     }
 
@@ -79,44 +63,21 @@ export async function scrapeOffersFromUrl(
 
     const json = (await res.json()) as {
       success?: boolean;
-      data?: { extract?: { offers?: unknown[] } };
+      data?: { links?: unknown; html?: unknown };
     };
-    const raw = json.data?.extract?.offers;
-    if (!Array.isArray(raw)) return [];
 
-    const out: FirecrawlOffer[] = [];
-    for (const item of raw) {
-      if (!item || typeof item !== "object") continue;
-      const o = item as Record<string, unknown>;
-      const title = typeof o.title === "string" ? o.title.trim() : "";
-      const url = typeof o.url === "string" ? o.url.trim() : "";
-      if (!title || !url) continue;
+    const linksRaw = json.data?.links;
+    const links = Array.isArray(linksRaw)
+      ? linksRaw.filter((x): x is string => typeof x === "string")
+      : [];
+    const html =
+      typeof json.data?.html === "string" ? json.data.html : undefined;
 
-      // ponytail: descarta links institucionais/menus da página
-      const lower = title.toLowerCase();
-      if (
-        lower.includes("já tenho conta") ||
-        lower.includes("sou novo") ||
-        lower.includes("central de privacidade") ||
-        lower.includes("termos de uso") ||
-        lower.includes("minha conta") ||
-        lower.includes("carrinho")
-      ) {
-        continue;
-      }
-
-      out.push({
-        title: title.slice(0, 240),
-        url,
-        priceCents: coercePriceCents(o.priceCents ?? o.price),
-        imageUrl:
-          typeof o.imageUrl === "string" ? o.imageUrl : undefined,
-        externalId:
-          typeof o.externalId === "string" ? o.externalId : undefined,
-      });
-      if (out.length >= max) break;
-    }
-    return out;
+    return harvestOffers(targetUrl, links, html, {
+      hostIncludes: opts.hostIncludes,
+      hrefPattern: opts.hrefPattern,
+      max,
+    });
   } finally {
     clearTimeout(t);
   }

@@ -1,7 +1,5 @@
 import type { AffiliateProvider, EmitResult } from "./types";
 import { emitGeneric } from "./providers/generic";
-import { emitLivelo } from "./providers/livelo";
-import { emitMeliuz } from "./providers/meliuz";
 
 export function emitWithProvider(
   provider: Pick<AffiliateProvider, "kind" | "config" | "active">,
@@ -10,13 +8,24 @@ export function emitWithProvider(
   if (!provider.active) {
     return { ok: false, error: "Provider inativo" };
   }
+  const config = provider.config ?? {};
   switch (provider.kind) {
-    case "livelo":
-      return emitLivelo(originalUrl, provider.config ?? {});
-    case "meliuz":
-      return emitMeliuz(originalUrl, provider.config ?? {});
+    case "livelo": {
+      const tag = process.env.LIVELO_TAG;
+      return emitGeneric(originalUrl, {
+        template: config.template ?? "{{url}}",
+        params: { utm_source: "livelo", ...(tag ? { tag } : {}), ...config.params },
+      });
+    }
+    case "meliuz": {
+      const partner = process.env.MELIUZ_PARTNER;
+      return emitGeneric(originalUrl, {
+        template: config.template ?? "{{url}}",
+        params: { utm_source: "meliuz", ...(partner ? { partner } : {}), ...config.params },
+      });
+    }
     case "generic":
-      return emitGeneric(originalUrl, provider.config ?? {});
+      return emitGeneric(originalUrl, config);
     default:
       return { ok: false, error: `Kind desconhecido: ${provider.kind}` };
   }

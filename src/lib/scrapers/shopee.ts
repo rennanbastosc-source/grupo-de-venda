@@ -5,10 +5,7 @@ import { withSessionRetry } from "./session/ensure";
 const DEFAULT_URL =
   process.env.SCRAPE_SHOPEE_URL || "https://shopee.com.br/flash_sale";
 
-const PROMPT = `Extraia ofertas da Shopee Brasil.
-Para cada item: title (nome completo), url (link absoluto do produto na Shopee), priceCents (preço em centavos inteiros), imageUrl e externalId.
-Importante: a url de cada produto deve ser a URL inteira real do produto (ex: https://shopee.com.br/nome-do-produto-i.SHOPID.ITEMID), não invente URLs genéricas ou mock.
-Máximo 15 itens.`;
+const HREF = /i\.\d+\.\d+|\/product\/\d+\/\d+/i;
 
 async function fetchOffers(): Promise<RawOffer[]> {
   if (process.env.SCRAPE_MOCK === "1") {
@@ -22,8 +19,13 @@ async function fetchOffers(): Promise<RawOffer[]> {
     ];
   }
   return withSessionRetry("shopee", (session) =>
-    scrapeOffersFromUrl(DEFAULT_URL, PROMPT, {
-      headers: session.cookieHeader ? { Cookie: session.cookieHeader } : undefined,
+    scrapeOffersFromUrl(DEFAULT_URL, {
+      hostIncludes: "shopee.com.br",
+      hrefPattern: HREF,
+      waitFor: 2500,
+      headers: session.cookieHeader
+        ? { Cookie: session.cookieHeader }
+        : undefined,
     }),
   );
 }

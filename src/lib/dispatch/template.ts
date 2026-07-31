@@ -8,10 +8,7 @@ export function buildMessage(
   template: string,
   vars: MessageVars,
 ): string {
-  return template
-    .replaceAll("{{title}}", vars.title)
-    .replaceAll("{{price}}", vars.price)
-    .replaceAll("{{affiliate_url}}", vars.affiliate_url);
+  return template.replace(/\{\{(title|price|affiliate_url)\}\}/g, (_, k) => vars[k as keyof MessageVars] ?? "");
 }
 
 export function formatPriceCents(cents: number | null | undefined): string {

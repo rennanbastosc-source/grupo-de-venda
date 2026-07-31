@@ -4,12 +4,10 @@ import { withSessionRetry } from "./session/ensure";
 
 const DEFAULT_URL =
   process.env.SCRAPE_AMAZON_URL ||
-  "https://www.amazon.com.br/deals";
+  "https://www.amazon.com.br/gp/goldbox";
 
-const PROMPT = `Extraia produtos físicos individuais em promoção na Amazon Brasil.
-Para cada item: title (nome completo do produto), url (link direto do produto contendo /dp/ASIN), priceCents (preço atual em centavos inteiros), imageUrl e externalId (ASIN).
-ATENÇÃO: Ignore categorias de cupons (ex: "15% off em Ferramentas"), links de navegação e banners de departamento. Extraia apenas PRODUTOS FÍSICOS INDIVIDUAIS.
-Máximo 15 itens.`;
+const HREF =
+  /\/dp\/[A-Z0-9]{10}|\/gp\/product\//i;
 
 async function fetchOffers(): Promise<RawOffer[]> {
   if (process.env.SCRAPE_MOCK === "1") {
@@ -23,8 +21,12 @@ async function fetchOffers(): Promise<RawOffer[]> {
     ];
   }
   return withSessionRetry("amazon", (session) =>
-    scrapeOffersFromUrl(DEFAULT_URL, PROMPT, {
-      headers: session.cookieHeader ? { Cookie: session.cookieHeader } : undefined,
+    scrapeOffersFromUrl(DEFAULT_URL, {
+      hostIncludes: "amazon.com.br",
+      hrefPattern: HREF,
+      headers: session.cookieHeader
+        ? { Cookie: session.cookieHeader }
+        : undefined,
     }),
   );
 }
