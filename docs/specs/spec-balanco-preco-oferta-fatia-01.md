@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 01 - Modelo de Dados & Extensão do Scrape/API
 
-> **Feature:** `balanco-preco-oferta` | **Status:** `PENDENTE` | **Data:** 2026-07-31
+> **Feature:** `balanco-preco-oferta` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-31
 
 <!-- Arquivo: docs/specs/spec-balanco-preco-oferta-fatia-01.md -->
 
@@ -41,7 +41,7 @@
 - [ ] **Validação Estrita:** Passar em `npm run typecheck`, `npm run lint` e `npm run test`.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** Nenhum
-- **Pendente:** Implementação dos tipos e testes da Fatia 01.
+- **Status:** `CONCLUÍDO`
+- **Concluído:** Adicionado campo `originalPriceCents` em `RawOffer`, criado utilitário `calculateDiscount` com testes unitários em `tests/price-balance.test.ts`.
+- **Pendente:** Nenhum nesta fatia.
 - **Próximo comando:** `/sdd-implement`

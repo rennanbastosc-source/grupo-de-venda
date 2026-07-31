@@ -11,6 +11,7 @@ export type RawOffer = {
   title: string;
   url: string;
   priceCents?: number;
+  originalPriceCents?: number;
   imageUrl?: string;
   externalId?: string;
 };
