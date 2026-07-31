@@ -18,7 +18,11 @@ type Settings = {
   hourly_cap: number;
   min_interval_sec: number;
   message_template: string;
+  auto_dispatch_enabled: boolean;
+  auto_dispatch_group_ids: string[];
+  default_affiliate_provider_id: string | null;
 };
+type Provider = { id: string; name: string; active: boolean };
 
 export function DispatchManager() {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -34,6 +38,10 @@ export function DispatchManager() {
   const [dailyCap, setDailyCap] = useState("35");
   const [hourlyCap, setHourlyCap] = useState("10");
   const [intervalSec, setIntervalSec] = useState("45");
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [autoGroupIds, setAutoGroupIds] = useState<string[]>([]);
+  const [defaultProviderId, setDefaultProviderId] = useState("");
+  const [providers, setProviders] = useState<Provider[] | null>(null);
   const [filterStatus, setFilterStatus] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [expandedError, setExpandedError] = useState<string | null>(null);
@@ -47,11 +55,12 @@ export function DispatchManager() {
       const qs = new URLSearchParams();
       if (filterStatus) qs.set("status", filterStatus);
       if (filterFrom) qs.set("from", filterFrom);
-      const [oRes, gRes, jRes, sRes] = await Promise.all([
+      const [oRes, gRes, jRes, sRes, pRes] = await Promise.all([
         fetch("/api/offers?status=approved"),
         fetch("/api/groups"),
         fetch(`/api/dispatch?${qs}`),
         fetch("/api/settings"),
+        fetch("/api/affiliate-providers"),
       ]);
       const oData = await oRes.json();
       const gData = await gRes.json();
@@ -69,6 +78,17 @@ export function DispatchManager() {
       setDailyCap(String(s.daily_cap));
       setHourlyCap(String(s.hourly_cap));
       setIntervalSec(String(s.min_interval_sec));
+      setAutoEnabled(!!s.auto_dispatch_enabled);
+      setAutoGroupIds(s.auto_dispatch_group_ids ?? []);
+      setDefaultProviderId(s.default_affiliate_provider_id ?? "");
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        setProviders(
+          (pData.providers ?? []).filter((p: Provider) => p.active !== false),
+        );
+      } else {
+        setProviders(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro");
     } finally {
@@ -85,6 +105,12 @@ export function DispatchManager() {
 
   function toggleGroup(id: string) {
     setGroupIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function toggleAutoGroup(id: string) {
+    setAutoGroupIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
@@ -129,12 +155,15 @@ export function DispatchManager() {
           daily_cap: Number(dailyCap),
           hourly_cap: Number(hourlyCap),
           min_interval_sec: Number(intervalSec),
+          auto_dispatch_enabled: autoEnabled,
+          auto_dispatch_group_ids: autoGroupIds,
+          default_affiliate_provider_id: defaultProviderId || null,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha settings");
       setSettings(data.settings);
-      setMsg("Limites salvos");
+      setMsg("Configuração salva");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha");
     } finally {
@@ -307,12 +336,71 @@ export function DispatchManager() {
             className="b-input"
           />
         </label>
+
+        <div className="sm:col-span-3 border-t-[3px] border-ink pt-3 grid gap-3">
+          <h2 className="text-sm font-black uppercase tracking-tight text-ink">
+            Auto-dispatch
+          </h2>
+          <p className="text-xs text-muted">
+            Enfileira ofertas com legenda pronta nos grupos marcados.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={autoEnabled}
+              onChange={(e) => setAutoEnabled(e.target.checked)}
+            />
+            <span className="font-bold">Auto-dispatch</span>
+          </label>
+          <fieldset className="text-sm">
+            <legend className="b-label">Grupos (auto)</legend>
+            <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
+              {groups.length === 0 ? (
+                <p className="text-muted">Nenhum grupo ativo.</p>
+              ) : (
+                groups.map((g) => (
+                  <label key={g.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={autoGroupIds.includes(g.id)}
+                      onChange={() => toggleAutoGroup(g.id)}
+                    />
+                    <span>
+                      {g.name}{" "}
+                      <span className="font-mono text-xs text-muted">
+                        {g.jid}
+                      </span>
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+          </fieldset>
+          {providers ? (
+            <label className="block text-sm">
+              <span className="b-label">Provider padrão</span>
+              <select
+                value={defaultProviderId}
+                onChange={(e) => setDefaultProviderId(e.target.value)}
+                className="b-input"
+              >
+                <option value="">Nenhum</option>
+                {providers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
+
         <button
           type="submit"
           disabled={busy}
           className="w-fit b-btn b-btn-ghost sm:col-span-3"
         >
-          Salvar limites
+          Salvar
         </button>
       </form>
 

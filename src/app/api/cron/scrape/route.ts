@@ -5,6 +5,8 @@ import type { ScrapeSource } from "@/lib/scrapers/types";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
+export const maxDuration = 120;
+
 const ACTIVE = new Set(["mercadolivre", "amazon", "shopee", "magalu"]);
 
 function serviceClient() {

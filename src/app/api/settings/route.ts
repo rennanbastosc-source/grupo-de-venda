@@ -1,15 +1,30 @@
 import { requireUser } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const SETTINGS_SELECT =
+  "daily_cap, hourly_cap, min_interval_sec, message_template, auto_dispatch_enabled, auto_dispatch_group_ids, default_affiliate_provider_id, updated_at";
+
+const DEFAULTS = {
+  daily_cap: 35,
+  hourly_cap: 10,
+  min_interval_sec: 45,
+  message_template:
+    "{{caption}}\n💰 {{price}}\n🔗 {{affiliate_url}}",
+  auto_dispatch_enabled: false,
+  auto_dispatch_group_ids: [] as string[],
+  default_affiliate_provider_id: null as string | null,
+};
+
 export async function GET() {
   const auth = await requireUser();
   if (auth.error) return auth.error;
 
   const { data, error } = await auth.supabase
     .from("app_settings")
-    .select(
-      "daily_cap, hourly_cap, min_interval_sec, message_template, updated_at",
-    )
+    .select(SETTINGS_SELECT)
     .eq("id", 1)
     .maybeSingle();
 
@@ -17,12 +32,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({
-    settings: data ?? {
-      daily_cap: 35,
-      hourly_cap: 10,
-      min_interval_sec: 45,
-      message_template: "🔥 {{title}}\n💰 {{price}}\n🔗 {{affiliate_url}}",
-    },
+    settings: data ?? DEFAULTS,
   });
 }
 
@@ -58,12 +68,46 @@ export async function PATCH(request: Request) {
     patch.message_template = t;
   }
 
+  if (body.auto_dispatch_enabled !== undefined) {
+    if (typeof body.auto_dispatch_enabled !== "boolean") {
+      return NextResponse.json(
+        { error: "auto_dispatch_enabled deve ser boolean" },
+        { status: 400 },
+      );
+    }
+    patch.auto_dispatch_enabled = body.auto_dispatch_enabled;
+  }
+
+  if (body.auto_dispatch_group_ids !== undefined) {
+    if (
+      !Array.isArray(body.auto_dispatch_group_ids) ||
+      !body.auto_dispatch_group_ids.every(
+        (id: unknown) => typeof id === "string" && UUID_RE.test(id),
+      )
+    ) {
+      return NextResponse.json(
+        { error: "auto_dispatch_group_ids deve ser array de uuid" },
+        { status: 400 },
+      );
+    }
+    patch.auto_dispatch_group_ids = body.auto_dispatch_group_ids;
+  }
+
+  if (body.default_affiliate_provider_id !== undefined) {
+    const v = body.default_affiliate_provider_id;
+    if (v !== null && (typeof v !== "string" || !UUID_RE.test(v))) {
+      return NextResponse.json(
+        { error: "default_affiliate_provider_id deve ser uuid ou null" },
+        { status: 400 },
+      );
+    }
+    patch.default_affiliate_provider_id = v;
+  }
+
   const { data, error } = await auth.supabase
     .from("app_settings")
     .upsert({ id: 1, ...patch })
-    .select(
-      "daily_cap, hourly_cap, min_interval_sec, message_template, updated_at",
-    )
+    .select(SETTINGS_SELECT)
     .single();
 
   if (error) {

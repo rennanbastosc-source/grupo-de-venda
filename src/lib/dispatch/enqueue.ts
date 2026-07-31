@@ -44,11 +44,12 @@ export async function enqueueDispatch(
 
   const template =
     settings?.message_template ??
-    "🔥 {{title}}\n💰 {{price}}\n🔗 {{affiliate_url}}";
+    "{{caption}}\n💰 {{price}}\n🔗 {{affiliate_url}}";
   const message_body = buildMessage(template, {
     title: offer.title,
     price: formatPriceCents(offer.price_cents),
     affiliate_url: offer.affiliate_url,
+    caption: offer.caption ?? "",
   });
 
   const created: EnqueueResult["created"] = [];

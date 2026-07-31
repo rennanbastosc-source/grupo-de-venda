@@ -122,10 +122,15 @@ export async function processDispatchQueue(
       continue;
     }
 
-    await supabase
+    // claim atômico: só um cron vence se status ainda for queued
+    const { data: claimed, error: claimErr } = await supabase
       .from("dispatch_jobs")
       .update({ status: "sending" })
-      .eq("id", job.id);
+      .eq("id", job.id)
+      .eq("status", "queued")
+      .select("id")
+      .maybeSingle();
+    if (claimErr || !claimed) continue;
 
     const send = await workerFetch<{ ok: boolean }>("/send", {
       method: "POST",
