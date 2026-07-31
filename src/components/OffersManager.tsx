@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { PriceBalanceModal } from "./PriceBalanceModal";
 
 type Offer = {
   id: string;
   title: string;
   source: string;
   price_cents: number | null;
+  original_price_cents?: number | null;
   status: string;
   url: string;
   scraped_at: string;
@@ -56,6 +58,8 @@ export function OffersManager() {
   const [limit, setLimit] = useState(30);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +189,12 @@ export function OffersManager() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ status: next }),
     });
-    if (res.ok) await load();
+    if (res.ok) {
+      await load();
+      if (selectedOffer?.id === id) {
+        setSelectedOffer((prev) => (prev ? { ...prev, status: next } : null));
+      }
+    }
   }
 
   async function runScrapeNow() {
@@ -319,7 +328,7 @@ export function OffersManager() {
         </label>
       ) : null}
 
-      {/* Formulário Manual Retrátil / Card */}
+      {/* Formulário Manual */}
       <form
         onSubmit={onManual}
         className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-2"
@@ -421,13 +430,16 @@ export function OffersManager() {
                       </a>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span
-                        className={`inline-block border-[2px] border-ink px-2 py-0.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_#000] ${getSourceBadge(
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOffer(o)}
+                        className={`inline-block border-[2px] border-ink px-2.5 py-1 text-[10px] font-black uppercase transition-transform active:translate-y-0.5 hover:-translate-y-0.5 shadow-[2px_2px_0px_#000] ${getSourceBadge(
                           o.source,
                         )}`}
+                        title="Ver balanço de preço e detalhes da oferta"
                       >
-                        {o.source}
-                      </span>
+                        {o.source} 🔍
+                      </button>
                     </td>
                     <td className="px-4 py-3 font-bold text-ink whitespace-nowrap">
                       {formatPrice(o.price_cents)}
@@ -528,6 +540,21 @@ export function OffersManager() {
           </div>
         </div>
       )}
+
+      {/* Modal de Balanço de Preço */}
+      <PriceBalanceModal
+        offer={selectedOffer}
+        onClose={() => setSelectedOffer(null)}
+        onApprove={async (id) => {
+          await setOfferStatus(id, "approved");
+        }}
+        onReject={async (id) => {
+          await setOfferStatus(id, "rejected");
+        }}
+        onEmitAffiliate={async (id) => {
+          await emitAffiliate(id);
+        }}
+      />
     </div>
   );
 }

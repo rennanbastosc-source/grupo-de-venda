@@ -1,6 +1,6 @@
 # Spec Técnica: Fatia 02 - Modal de Balanço de Preço & Interatividade da UI
 
-> **Feature:** `balanco-preco-oferta` | **Status:** `PENDENTE` | **Data:** 2026-07-31
+> **Feature:** `balanco-preco-oferta` | **Status:** `CONCLUÍDO` | **Data:** 2026-07-31
 
 <!-- Arquivo: docs/specs/spec-balanco-preco-oferta-fatia-02.md -->
 
@@ -34,7 +34,7 @@
 - [ ] **Validação Estrita:** Passar em `npm run typecheck`, `npm run lint` e `npm run test`.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** Nenhum
-- **Pendente:** Criação do modal e integração no quadro de ofertas.
-- **Próximo comando:** `/sdd-implement`
+- **Status:** `CONCLUÍDO`
+- **Concluído:** Criado componente `PriceBalanceModal.tsx` e integrados os botões de fonte clicáveis em `OffersManager.tsx`.
+- **Pendente:** Nenhum nesta fatia.
+- **Próximo comando:** `/sdd-validate`
