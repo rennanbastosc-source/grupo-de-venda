@@ -113,12 +113,11 @@ jobs:
         run: npm audit --omit=dev --audit-level=critical
         working-directory: worker
 
-  # Só sobe se quality + build verdes. Auto-deploy Git da Vercel está desligado.
+  # Só faz deploy se for push na branch main (produção pura).
   deploy:
-    name: Deploy Vercel (pós-CI)
+    name: Deploy Vercel (Produção)
     needs: [quality, build]
-    # forks: não deploy (sem secrets)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -142,28 +141,19 @@ jobs:
       - name: Instalar Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Pull env Vercel
+      - name: Pull env Vercel (Production)
         run: |
           if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
             echo "::error::Configure secrets.VERCEL_TOKEN e vars VERCEL_ORG_ID / VERCEL_PROJECT_ID"
             exit 1
           fi
-          ENV_NAME=preview
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            ENV_NAME=production
-          fi
-          vercel pull --yes --environment="$ENV_NAME" --token="$VERCEL_TOKEN"
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Build na CI (prebuilt)
-        # Sem NEXT_PUBLIC_* no shell — usa .env do `vercel pull` (prod real).
+      - name: Build na CI (prebuilt prod)
         run: |
           unset NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY \
             WORKER_BASE_URL WORKER_API_SECRET CRON_SECRET || true
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            vercel build --prod --token="$VERCEL_TOKEN"
-          else
-            vercel build --token="$VERCEL_TOKEN"
-          fi
+          vercel build --prod --token="$VERCEL_TOKEN"
 
       - name: Guard NEXT_PUBLIC (não embutir CI placeholders)
         run: |
@@ -173,16 +163,13 @@ jobs:
           fi
           echo "OK: sem placeholders CI no output"
 
-      - name: Deploy prebuilt
+      - name: Deploy prebuilt (Production)
         id: deploy
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
-          else
-            url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
-          fi
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed: $url"
 
       - name: URL do deploy
-        run: echo "### Deploy ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "### Deploy Producao: ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
