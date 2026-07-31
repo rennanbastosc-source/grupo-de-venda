@@ -21,14 +21,29 @@ describe("GET /api/scrape/sessions (Fatia 03)", () => {
 
   it("retorna lista de status de sessão sem expor cookies", async () => {
     const mockSupabase = {
-      from: vi.fn().mockImplementation(() => ({
-        select: async () => ({
-          data: [
-            { source: "mercadolivre", status: "ok", last_error: null, updated_at: "2026-07-30T00:00:00Z" },
-            { source: "amazon", status: "ok", last_error: null, updated_at: "2026-07-30T00:00:00Z" },
-          ],
-        }),
-      })),
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "scrape_runs") {
+          return {
+            select: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: async () => ({
+                    data: { started_at: "2026-07-31T10:00:00Z", finished_at: "2026-07-31T10:05:00Z" },
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: async () => ({
+            data: [
+              { source: "mercadolivre", status: "ok", last_error: null, updated_at: "2026-07-30T00:00:00Z" },
+              { source: "amazon", status: "ok", last_error: null, updated_at: "2026-07-30T00:00:00Z" },
+            ],
+          }),
+        };
+      }),
     } as unknown as SupabaseClient;
 
     vi.spyOn(apiAuth, "requireUser").mockResolvedValue({

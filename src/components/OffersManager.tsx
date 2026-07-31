@@ -22,6 +22,19 @@ function formatPrice(cents: number | null) {
   });
 }
 
+function formatDateTime(iso: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getStatusBadge(status: string) {
   switch (status) {
     case "approved":
@@ -76,13 +89,15 @@ export function OffersManager() {
   const [sessions, setSessions] = useState<
     { source: string; status: string; lastError: string | null }[]
   >([]);
+  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
     try {
       const res = await fetch("/api/scrape/sessions");
       const data = await res.json();
-      if (res.ok && Array.isArray(data.sessions)) {
-        setSessions(data.sessions);
+      if (res.ok) {
+        if (Array.isArray(data.sessions)) setSessions(data.sessions);
+        if (data.lastRunAt !== undefined) setLastRunAt(data.lastRunAt);
       }
     } catch {}
   }, []);
@@ -264,6 +279,11 @@ export function OffersManager() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {lastRunAt ? (
+            <span className="border-[2px] border-ink bg-ice px-2.5 py-1 text-xs font-extrabold text-ink shadow-[2px_2px_0px_#000]">
+              Último scrap: {formatDateTime(lastRunAt)}
+            </span>
+          ) : null}
           <button
             type="button"
             disabled={busy}

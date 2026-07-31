@@ -6,6 +6,17 @@ export async function GET() {
   const auth = await requireUser();
   if (auth.error) return auth.error;
 
-  const sessions = await listSessionStatuses(auth.supabase);
-  return NextResponse.json({ sessions });
+  const [sessions, lastRunRes] = await Promise.all([
+    listSessionStatuses(auth.supabase),
+    auth.supabase
+      .from("scrape_runs")
+      .select("started_at, finished_at")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const lastRunAt = lastRunRes.data?.finished_at || lastRunRes.data?.started_at || null;
+
+  return NextResponse.json({ sessions, lastRunAt });
 }
