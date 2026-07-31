@@ -149,6 +149,7 @@ Ordem CI: lint → typecheck (app+worker) → test → build smoke → (main) de
 ### 11. Armadilha CI / login produção
 
 Placeholders `NEXT_PUBLIC_SUPABASE_*=https://ci.supabase.co` **só** nos jobs `quality`/`build`. **Nunca** no job `deploy` nem como `env:` global do workflow — o shell vaza pro `vercel build` e embute `ci.supabase.co` no bundle (login quebra). Há guard `grep` no output antes do deploy.
+- **Novos módulos/stores com DB**: Todo código server-side que instancia `createClient` com Supabase deve ignorar tentativas de rede (retornar `null` ou fallback in-memory) se a URL contiver `ci.supabase.co` ou se `SCRAPE_MOCK=1`, impedindo timeouts de 5s nos testes do CI.
 
 ## 12. Infra CLI (obrigatório)
 
