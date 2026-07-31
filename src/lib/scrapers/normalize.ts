@@ -55,36 +55,106 @@ export function canonicalizeUrl(raw: string): string {
   return u.toString();
 }
 
+/** Token BRL → centavos. Aceita: 1.499,00 | 1.499 00 | 698,00 | 698 00 | 698 | 1.499 */
+function brlTokenToCents(token: string): number | undefined {
+  const t = token.trim().replace(/\s+/g, " ");
+  if (!t) return undefined;
+
+  // Centavos separados por espaço (artefato de strip de tags: "1.499 00")
+  const spaceCents = /^(\d{1,3}(?:\.\d{3})+|\d+)\s+(\d{2})$/.exec(t);
+  if (spaceCents) {
+    const whole = Number(spaceCents[1].replace(/\./g, ""));
+    const cents = Number(spaceCents[2]);
+    if (!Number.isFinite(whole) || !Number.isFinite(cents) || whole <= 0) return undefined;
+    return whole * 100 + cents;
+  }
+
+  // Formato clássico com vírgula: 1.499,00 / 698,00
+  if (t.includes(",")) {
+    const [intPart, decPart = ""] = t.split(",");
+    const whole = Number(intPart.replace(/\./g, ""));
+    const cents = Number((decPart + "00").slice(0, 2));
+    if (!Number.isFinite(whole) || !Number.isFinite(cents) || whole < 0) return undefined;
+    if (whole === 0 && cents === 0) return undefined;
+    return whole * 100 + cents;
+  }
+
+  // Inteiro em reais (com ou sem milhar): 1.499 → 149900; 698 → 69800
+  if (!/^\d{1,3}(?:\.\d{3})+$|^\d+$/.test(t)) return undefined;
+  const whole = Number(t.replace(/\./g, ""));
+  if (!Number.isFinite(whole) || whole <= 0) return undefined;
+  return whole * 100;
+}
+
+// Grupo capturável de valor BRL (milhar opcional + centavos ,|espaço opcionais)
+const BRL_NUM =
+  String.raw`\d{1,3}(?:\.\d{3})+(?:\s*\d{2}(?!\d)|\s*,\s*\d{2})?|\d+(?:\s*\d{2}(?!\d)|\s*,\s*\d{2})?`;
+
 export function parsePricesFromText(text: string): {
   priceCents?: number;
   originalPriceCents?: number;
 } {
   if (!text) return {};
 
-  // Remove parcelamento (ex: "10x de R$ 100", "12x R$ 50") para não poluir valores
-  const cleanText = text.replace(/\b\d{1,2}\s*x\s*(?:de\s*)?(?:R\$\s*)?\d+(?:[.,]\d+)?/gi, "");
+  let cleanText = text;
 
-  // Procurar por padrão "de R$ X por R$ Y" ou "R$ X R$ Y"
-  const dePorMatch = /(?:de|de\s+R\$)\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:por|por\s+R\$)\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/i.exec(cleanText);
+  // Parcelamento (ex: "10x de R$ 100", "12x R$ 50,00")
+  cleanText = cleanText.replace(
+    new RegExp(String.raw`\b\d{1,2}\s*x\s*(?:de\s*)?(?:R\$\s*)?(?:${BRL_NUM})`, "gi"),
+    " ",
+  );
+
+  // Pix / cashback / cupom — não são preço de vitrine (costumam vir depois)
+  // 1) keyword → valor  ("no Pix R$ 650", "cashback R$ 50")
+  cleanText = cleanText.replace(
+    new RegExp(
+      String.raw`(?:(?:no\s+)?pix|cashback|cupom)\s*(?::\s*|de\s*)?(?:R\$\s*)?(?:${BRL_NUM})`,
+      "gi",
+    ),
+    " ",
+  );
+  // 2) valor → keyword, só se não houver outro R$ logo após ("R$ 650 no Pix")
+  cleanText = cleanText.replace(
+    new RegExp(
+      String.raw`(?:R\$\s*)?(?:${BRL_NUM})\s*(?:no\s+)?pix\b(?!\s*R\$)`,
+      "gi",
+    ),
+    " ",
+  );
+  cleanText = cleanText.replace(
+    new RegExp(
+      String.raw`(?:R\$\s*)?(?:${BRL_NUM})\s*(?:cashback|cupom)\b`,
+      "gi",
+    ),
+    " ",
+  );
+
+  // "de R$ X por R$ Y"
+  const dePorRe = new RegExp(
+    String.raw`(?:de\s+(?:R\$\s*)?|de\s+R\$\s*)(${BRL_NUM})\s*(?:por\s+(?:R\$\s*)?|por\s+R\$\s*)(${BRL_NUM})`,
+    "i",
+  );
+  const dePorMatch = dePorRe.exec(cleanText);
   if (dePorMatch) {
-    const orig = Math.round(Number(dePorMatch[1].replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".")) * 100);
-    const curr = Math.round(Number(dePorMatch[2].replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".")) * 100);
-    if (orig > curr && curr > 0) {
+    const orig = brlTokenToCents(dePorMatch[1]);
+    const curr = brlTokenToCents(dePorMatch[2]);
+    if (orig != null && curr != null && orig > curr && curr > 0) {
       return { priceCents: curr, originalPriceCents: orig };
     }
   }
 
-  // Match valores no formato R$ X.XXX,XX ou R$ X,XX ou X,XX
-  const priceRegex = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/gi;
+  // Com R$: inteiro ou com centavos. Sem R$: só com vírgula (evita IDs soltos).
+  const priceRegex = new RegExp(
+    String.raw`R\$\s*(${BRL_NUM})|(\d{1,3}(?:\.\d{3})*,\s*\d{2}|\d+,\s*\d{2})`,
+    "gi",
+  );
   const matches: number[] = [];
   let m: RegExpExecArray | null;
 
   while ((m = priceRegex.exec(cleanText)) !== null) {
-    const rawVal = m[1].replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
-    const val = Number(rawVal);
-    if (Number.isFinite(val) && val > 0) {
-      matches.push(Math.round(val * 100));
-    }
+    const raw = (m[1] ?? m[2] ?? "").replace(/\s+/g, " ").trim();
+    const cents = brlTokenToCents(raw);
+    if (cents != null && cents > 0) matches.push(cents);
   }
 
   if (matches.length === 0) return {};

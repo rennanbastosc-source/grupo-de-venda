@@ -69,6 +69,28 @@ describe("html-extract", () => {
     expect(offers[0].originalPriceCents).toBe(349900);
   });
 
+  it("preço após strip de tags (centavos em espaço) + ignora Pix", () => {
+    // Simula HTML com spans que viram "R$ 1.499 00 R$ 698 00"
+    const html = `
+      <a href="https://produto.mercadolivre.com.br/MLB-123">
+        Fone <span>R$</span><span>1.499</span><span>00</span>
+        <span>R$</span><span>698</span><span>00</span>
+        no Pix R$ 650 00
+      </a>
+    `;
+    const offers = extractOffersFromHtml(
+      html,
+      "https://www.mercadolivre.com.br",
+      {
+        hostIncludes: "mercadolivre.com.br",
+        hrefPattern: /MLB-/i,
+      },
+    );
+    expect(offers).toHaveLength(1);
+    expect(offers[0].priceCents).toBe(69800);
+    expect(offers[0].originalPriceCents).toBe(149900);
+  });
+
   it("cleanTitle substitui títulos numéricos ou vazios pelo slug da URL da Amazon", () => {
     const urlWithSlug = "https://www.amazon.com.br/Fone-de-Ouvido-Bluetooth-Sem-Fio/dp/B0876MJBG6";
     expect(cleanTitle("135 4144914 5222909", urlWithSlug)).toBe("Fone de Ouvido Bluetooth Sem Fio");
