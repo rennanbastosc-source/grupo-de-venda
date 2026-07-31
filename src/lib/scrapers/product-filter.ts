@@ -35,17 +35,26 @@ export function isProductOffer(
       return (
         url.includes("/p/MLB") ||
         url.includes("/up/MLB") ||
-        /MLB\d+/i.test(url)
+        /MLB\d+/i.test(url) ||
+        (url.includes("mercadolivre.com.br") && (url.includes("/p/") || url.includes("/up/")))
       );
 
     case "amazon":
-      return /\/dp\/[A-Z0-9]{10}/i.test(url) || url.includes("/gp/product/");
+      return (
+        /\/dp\/[A-Z0-9]{10}/i.test(url) ||
+        url.includes("/gp/product/") ||
+        (url.includes("amazon.com.br") && url.includes("/dp/"))
+      );
 
     case "shopee":
       return (
         /i\.\d+\.\d+/i.test(url) ||
         /\/product\/\d+\/\d+/i.test(url) ||
-        (url.includes("shopee.com.br") && !url.endsWith("/fone-bluetooth") && !url.endsWith("/smartphone-xyz") && !url.endsWith("/produto1"))
+        (url.includes("shopee.com.br") &&
+          !url.endsWith("/flash_sale") &&
+          !url.endsWith("/cart") &&
+          !url.includes("/user/") &&
+          !url.includes("/help"))
       );
 
     default:

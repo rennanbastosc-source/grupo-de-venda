@@ -36,7 +36,14 @@ async function loginMercadoLivre(): Promise<PlatformSession> {
   const login = process.env.ML_LOGIN?.trim();
   const pass = process.env.ML_PASS?.trim();
   if (!login || !pass) {
-    throw new Error("ML_LOGIN ou ML_PASS ausentes nas variáveis de ambiente");
+    return {
+      source: "mercadolivre",
+      cookies: {},
+      cookieHeader: "",
+      status: "unauthenticated",
+      lastError: "ML_LOGIN / ML_PASS não configurados (modo público)",
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   // Tenta handshake HTTP básico com cookie de sessão
@@ -48,11 +55,15 @@ async function loginMercadoLivre(): Promise<PlatformSession> {
     const setCookie = res.headers.get("set-cookie") || "";
     const cookies = parseSetCookie(setCookie);
 
-    // Se a autenticação direta por form requerer CAPTCHA/2FA
     if (Object.keys(cookies).length === 0) {
-      throw new Error(
-        "Mercado Livre: login automatizado bloqueado ou requer verificação de 2FA",
-      );
+      return {
+        source: "mercadolivre",
+        cookies: {},
+        cookieHeader: "",
+        status: "unauthenticated",
+        lastError: "Mercado Livre: login requer verificação de 2FA (modo público)",
+        updatedAt: new Date().toISOString(),
+      };
     }
 
     return {
@@ -64,7 +75,14 @@ async function loginMercadoLivre(): Promise<PlatformSession> {
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Falha no login Mercado Livre: ${msg}`);
+    return {
+      source: "mercadolivre",
+      cookies: {},
+      cookieHeader: "",
+      status: "unauthenticated",
+      lastError: `Falha no login Mercado Livre: ${msg} (modo público)`,
+      updatedAt: new Date().toISOString(),
+    };
   }
 }
 
@@ -72,7 +90,14 @@ async function loginAmazon(): Promise<PlatformSession> {
   const login = process.env.AMZN_LOGIN?.trim();
   const pass = process.env.AMZN_PASS?.trim();
   if (!login || !pass) {
-    throw new Error("AMZN_LOGIN ou AMZN_PASS ausentes nas variáveis de ambiente");
+    return {
+      source: "amazon",
+      cookies: {},
+      cookieHeader: "",
+      status: "unauthenticated",
+      lastError: "AMZN_LOGIN / AMZN_PASS não configurados (modo público)",
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   try {
@@ -84,7 +109,14 @@ async function loginAmazon(): Promise<PlatformSession> {
     const cookies = parseSetCookie(setCookie);
 
     if (!cookies["session-id"]) {
-      throw new Error("Amazon: login automatizado requer verificação de segurança/CAPTCHA");
+      return {
+        source: "amazon",
+        cookies: {},
+        cookieHeader: "",
+        status: "unauthenticated",
+        lastError: "Amazon: login automatizado requer CAPTCHA (modo público)",
+        updatedAt: new Date().toISOString(),
+      };
     }
 
     return {
@@ -96,7 +128,14 @@ async function loginAmazon(): Promise<PlatformSession> {
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Falha no login Amazon: ${msg}`);
+    return {
+      source: "amazon",
+      cookies: {},
+      cookieHeader: "",
+      status: "unauthenticated",
+      lastError: `Falha no login Amazon: ${msg} (modo público)`,
+      updatedAt: new Date().toISOString(),
+    };
   }
 }
 
@@ -104,7 +143,14 @@ async function loginShopee(): Promise<PlatformSession> {
   const login = process.env.SHOP_LOGIN?.trim();
   const pass = process.env.SHOP_PASS?.trim();
   if (!login || !pass) {
-    throw new Error("SHOP_LOGIN ou SHOP_PASS ausentes nas variáveis de ambiente");
+    return {
+      source: "shopee",
+      cookies: {},
+      cookieHeader: "",
+      status: "unauthenticated",
+      lastError: "SHOP_LOGIN / SHOP_PASS não configurados (modo público)",
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   try {
@@ -116,7 +162,14 @@ async function loginShopee(): Promise<PlatformSession> {
     const cookies = parseSetCookie(setCookie);
 
     if (!cookies["SPC_EC"] && !cookies["SPC_SI"]) {
-      throw new Error("Shopee: login automatizado requer validação Cloudflare/OTP");
+      return {
+        source: "shopee",
+        cookies: {},
+        cookieHeader: "",
+        status: "unauthenticated",
+        lastError: "Shopee: login automatizado requer validação Cloudflare (modo público)",
+        updatedAt: new Date().toISOString(),
+      };
     }
 
     return {
@@ -128,7 +181,14 @@ async function loginShopee(): Promise<PlatformSession> {
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Falha no login Shopee: ${msg}`);
+    return {
+      source: "shopee",
+      cookies: {},
+      cookieHeader: "",
+      status: "unauthenticated",
+      lastError: `Falha no login Shopee: ${msg} (modo público)`,
+      updatedAt: new Date().toISOString(),
+    };
   }
 }
 

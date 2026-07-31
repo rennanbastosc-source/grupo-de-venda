@@ -232,13 +232,15 @@ export function OffersManager() {
               className={`border-[2px] border-ink px-2 py-0.5 font-bold uppercase ${
                 s.status === "ok"
                   ? "bg-lime text-ink"
+                  : s.status === "unauthenticated"
+                  ? "bg-ice-deep text-ink"
                   : s.status === "error" || s.status === "expired"
                   ? "bg-danger text-white"
                   : "bg-white text-ink-soft"
               }`}
               title={s.lastError || undefined}
             >
-              {s.source}: {s.status}
+              {s.source}: {s.status === "unauthenticated" ? "público" : s.status}
             </span>
           ))}
         </div>

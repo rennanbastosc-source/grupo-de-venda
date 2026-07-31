@@ -26,12 +26,14 @@ describe("Marketplace Session Management (Fatia 01)", () => {
     expect(session.cookieHeader).toContain("mock_mercadolivre_token");
   });
 
-  it("throws erro com nome da env quando credenciais estiverem ausentes (mock off)", async () => {
+  it("retorna sessão unauthenticated quando credenciais estiverem ausentes (modo público)", async () => {
     delete process.env.SCRAPE_MOCK;
     delete process.env.ML_LOGIN;
     delete process.env.ML_PASS;
 
-    await expect(performLogin("mercadolivre")).rejects.toThrow(/ML_LOGIN/);
+    const res = await performLogin("mercadolivre");
+    expect(res.status).toBe("unauthenticated");
+    expect(res.lastError).toContain("ML_LOGIN / ML_PASS");
   });
 
   it("ensureSession reutiliza sessão com status ok sem forçar re-login", async () => {

@@ -74,7 +74,7 @@ export async function listSessionStatuses(
   if (!supabase) {
     return sources.map((s) => ({
       source: s,
-      status: "unknown",
+      status: "unauthenticated",
       lastError: null,
       updatedAt: null,
     }));
@@ -90,7 +90,7 @@ export async function listSessionStatuses(
       const found = map.get(src);
       return {
         source: src,
-        status: (found?.status as PlatformSession["status"]) || "unknown",
+        status: (found?.status as PlatformSession["status"]) || "unauthenticated",
         lastError: found?.last_error ?? null,
         updatedAt: found?.updated_at ?? null,
       };
@@ -98,7 +98,7 @@ export async function listSessionStatuses(
   } catch {
     return sources.map((s) => ({
       source: s,
-      status: "unknown",
+      status: "unauthenticated",
       lastError: null,
       updatedAt: null,
     }));
