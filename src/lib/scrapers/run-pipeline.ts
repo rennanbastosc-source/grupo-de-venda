@@ -35,6 +35,7 @@ export function normalizeRaw(
       url: raw.url.trim(),
       urlCanonical,
       priceCents: raw.priceCents,
+      originalPriceCents: raw.originalPriceCents,
       imageUrl: raw.imageUrl,
       externalId: raw.externalId,
     };

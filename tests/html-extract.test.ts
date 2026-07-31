@@ -52,6 +52,23 @@ describe("html-extract", () => {
     expect(titleFromUrl(urlDirectAsin)).toBe("B0876MJBG6");
   });
 
+  it("extrai preço promocional e original de texto HTML", () => {
+    const html = `
+      <a href="https://www.amazon.com.br/dp/B0876MJBG6">Notebook i7 de R$ 3.499,00 por R$ 2.499,00 ou 10x de R$ 249,90</a>
+    `;
+    const offers = extractOffersFromHtml(
+      html,
+      "https://www.amazon.com.br",
+      {
+        hostIncludes: "amazon.com.br",
+        hrefPattern: /\/dp\/[A-Z0-9]{10}/i,
+      },
+    );
+    expect(offers).toHaveLength(1);
+    expect(offers[0].priceCents).toBe(249900);
+    expect(offers[0].originalPriceCents).toBe(349900);
+  });
+
   it("cleanTitle substitui títulos numéricos ou vazios pelo slug da URL da Amazon", () => {
     const urlWithSlug = "https://www.amazon.com.br/Fone-de-Ouvido-Bluetooth-Sem-Fio/dp/B0876MJBG6";
     expect(cleanTitle("135 4144914 5222909", urlWithSlug)).toBe("Fone de Ouvido Bluetooth Sem Fio");

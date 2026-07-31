@@ -1,5 +1,5 @@
 import type { RawOffer } from "./types";
-import { parsePriceToCents } from "./normalize";
+import { parsePricesFromText } from "./normalize";
 
 export type ExtractOpts = {
   hostIncludes: string;
@@ -34,8 +34,8 @@ export function extractOffersFromHtml(
     seen.add(href);
     const inner = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     const title = cleanTitle(inner.slice(0, 200), href).slice(0, 240);
-    const priceCents = parsePriceToCents(inner);
-    out.push({ title, url: href, priceCents });
+    const { priceCents, originalPriceCents } = parsePricesFromText(inner);
+    out.push({ title, url: href, priceCents, originalPriceCents });
   }
   return out;
 }

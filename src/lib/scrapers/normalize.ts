@@ -55,12 +55,50 @@ export function canonicalizeUrl(raw: string): string {
   return u.toString();
 }
 
+export function parsePricesFromText(text: string): {
+  priceCents?: number;
+  originalPriceCents?: number;
+} {
+  if (!text) return {};
+
+  // Remove parcelamento (ex: "10x de R$ 100", "12x R$ 50") para não poluir valores
+  const cleanText = text.replace(/\b\d{1,2}\s*x\s*(?:de\s*)?(?:R\$\s*)?\d+(?:[.,]\d+)?/gi, "");
+
+  // Procurar por padrão "de R$ X por R$ Y" ou "R$ X R$ Y"
+  const dePorMatch = /(?:de|de\s+R\$)\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:por|por\s+R\$)\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/i.exec(cleanText);
+  if (dePorMatch) {
+    const orig = Math.round(Number(dePorMatch[1].replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".")) * 100);
+    const curr = Math.round(Number(dePorMatch[2].replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".")) * 100);
+    if (orig > curr && curr > 0) {
+      return { priceCents: curr, originalPriceCents: orig };
+    }
+  }
+
+  // Match valores no formato R$ X.XXX,XX ou R$ X,XX ou X,XX
+  const priceRegex = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/gi;
+  const matches: number[] = [];
+  let m: RegExpExecArray | null;
+
+  while ((m = priceRegex.exec(cleanText)) !== null) {
+    const rawVal = m[1].replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
+    const val = Number(rawVal);
+    if (Number.isFinite(val) && val > 0) {
+      matches.push(Math.round(val * 100));
+    }
+  }
+
+  if (matches.length === 0) return {};
+
+  if (matches.length >= 2) {
+    const [first, second] = matches;
+    if (first > second) {
+      return { priceCents: second, originalPriceCents: first };
+    }
+  }
+
+  return { priceCents: matches[0] };
+}
+
 export function parsePriceToCents(text: string): number | undefined {
-  const cleaned = text
-    .replace(/[^\d,.]/g, "")
-    .replace(/\.(?=\d{3}(?:\D|$))/g, "")
-    .replace(",", ".");
-  const n = Number(cleaned);
-  if (!Number.isFinite(n) || n <= 0) return undefined;
-  return Math.round(n * 100);
+  return parsePricesFromText(text).priceCents;
 }

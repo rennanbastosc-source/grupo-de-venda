@@ -33,6 +33,7 @@ export function createSupabaseOfferStore(
         external_id: offer.externalId ?? null,
         title: offer.title,
         price_cents: offer.priceCents ?? null,
+        original_price_cents: offer.originalPriceCents ?? null,
         url: offer.url,
         url_canonical: offer.urlCanonical,
         image_url: offer.imageUrl ?? null,
