@@ -33,3 +33,9 @@
 - Decisões: `SCRAPE_AMAZON_URL` default → `gp/bestsellers` (+`waitFor` 3s); Shopee via profile de browser Firecrawl (`saveChanges:false`) — login por env nunca autenticou nada; paywall "Login Necessário" (HTTP 200) vira exceção no client.
 - Purga: 58 ofertas removidas (42 `/dp/ASIN` alucinados pelo extract LLM antigo — 42/42 mortas na verificação; 11 banners `/promotion/psp/`; 5 links de login/privacidade do ML). Restaram 25, todas ML com slug de produto.
 
+### balanco-preco-oferta  ·  2026-07-31  ·  PR #14
+- Invariantes: tags de fonte de ofertas interativas via modal (`PriceBalanceModal.tsx`); sanitização de títulos da Amazon/Mercado Livre usando slug quando o título interno for id/numérico; paginação server-side configurável (`30`/`50`/`100`).
+- Modelos: `RawOffer` estendido (`originalPriceCents`).
+- Decisões: UI Neo-brutalism preservada com botões clicáveis de fonte; modal com balanço comparativo de preço, economia em R$ e % de desconto; suporte defensivo a atalhos de teclado (Escape) e backdrop click.
+
+
