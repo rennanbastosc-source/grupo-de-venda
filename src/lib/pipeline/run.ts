@@ -341,15 +341,24 @@ async function ensureAffiliates(
     .select("default_affiliate_provider_id")
     .eq("id", 1)
     .maybeSingle();
-  const providerId = settings?.default_affiliate_provider_id as
+  const defaultProviderId = settings?.default_affiliate_provider_id as
     | string
     | null
     | undefined;
-  if (!providerId) return;
+  if (!defaultProviderId) return;
+
+  // Roteia provider por source: mercadolivre → provider ML; demais
+  // marketplaces → generic-tag (createLink do ML rejeita URL de outro site).
+  const { data: providers } = await supabase
+    .from("affiliate_providers")
+    .select("id, slug");
+  const providerBySlug = new Map(
+    (providers ?? []).map((p) => [p.slug as string, p.id as string]),
+  );
 
   const { data: offers, error } = await supabase
     .from("offers")
-    .select("id")
+    .select("id, source")
     .eq("caption_status", "ready")
     .in("status", ["new", "approved"])
     .order("scraped_at", { ascending: true })
@@ -370,6 +379,13 @@ async function ensureAffiliates(
       .limit(1)
       .maybeSingle();
     if (link) continue;
+
+    // mercadolivre → provider ML (link curto meli.la); demais sources →
+    // generic-tag. Fallback para o default se o slug não existir.
+    const providerId =
+      o.source === "mercadolivre"
+        ? (providerBySlug.get("mercadolivre") ?? defaultProviderId)
+        : (providerBySlug.get("generic-tag") ?? defaultProviderId);
 
     const emitted = await emitAffiliateLink(supabase, {
       offerId: o.id,

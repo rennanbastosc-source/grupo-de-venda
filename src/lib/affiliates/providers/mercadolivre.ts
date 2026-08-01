@@ -28,9 +28,13 @@ export async function emitMercadoLivre(
   const tag = process.env.ML_AFFILIATE_TAG ?? config.params?.matt_word;
   const tool = process.env.ML_AFFILIATE_TOOL ?? config.params?.matt_tool;
 
-  // Modo curto: sessão do portal + etiqueta. Sem cookie ou sem tag, não dá para
-  // chamar o createLink (body exige tag) → cai no modo longo (degradação graciosa).
-  if (cookie && tag) {
+  // Modo curto só vale para URL do Mercado Livre: o createLink rejeita URL de
+  // outro site (error_code 100 "URL Invalid"). Fora do domínio → modo longo.
+  const isMlUrl = /mercadolivre\.com\.br|mercadolibre\.com/i.test(originalUrl);
+
+  // Modo curto: sessão do portal + etiqueta. Sem cookie, sem tag ou URL fora
+  // do ML, não dá para chamar o createLink → cai no modo longo (degradação graciosa).
+  if (cookie && tag && isMlUrl) {
     try {
       // Passo 1: GET na página do portal → `_csrf` fresco (Set-Cookie) + meta csrf-token.
       const page = await fetch(PORTAL_PAGE, {
