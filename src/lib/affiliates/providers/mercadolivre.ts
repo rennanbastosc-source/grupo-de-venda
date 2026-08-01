@@ -82,10 +82,11 @@ export async function emitMercadoLivre(
         json as { urls?: Array<{ short_url?: string }> }
       )?.urls?.[0]?.short_url;
       if (!shortUrl) {
+        const bodyPreview = JSON.stringify(json).slice(0, 300);
+        console.error(`[ML] createLink sem short_url: ${bodyPreview}`);
         return {
           ok: false,
-          error:
-            "Mercado Livre: createLink respondeu sem short_url — shape inesperado",
+          error: `Mercado Livre: createLink respondeu sem short_url — shape inesperado (body: ${bodyPreview})`,
         };
       }
       return { ok: true, affiliateUrl: shortUrl };
