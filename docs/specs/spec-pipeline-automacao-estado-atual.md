@@ -1,8 +1,8 @@
 # Spec — Pipeline de Automação (estado atual, contexto vivo)
 
-> **Data**: 2026-07-31
+> **Data**: 2026-07-31 (atualizado 2026-08-01)
 > **Objetivo**: registro vivo para retomar em nova sessão sem perder contexto.
-> **Status geral**: código implementado e verificado; infra de produção parcialmente configurada; faltam 3 passos manuais.
+> **Status geral**: ✅ **PIPELINE 100% FUNCIONAL EM PRODUÇÃO** (captions gerando); falta só o auto-dispatch (depende de grupo WhatsApp).
 
 ---
 
@@ -104,24 +104,22 @@ NINE_ROUTER_MODEL                 = GeMiNi
 
 ## 4. Pendências — o que falta para ligar em prod
 
-### P1 — Dashboard 9router remoto (aguardando usuário)
-1. Abrir `https://grupo-de-venda-9router.onrender.com/login` e criar senha
-2. Conectar providers (pelo menos um que sirva `GeMiNi`)
-3. Gerar **API key nova** (`sk-...`) e colar para configurar `NINE_ROUTER_API_KEY` na Vercel
+### ✅ FEITO (2026-08-01)
+- 9router remoto: senha criada, provider OAuth conectado, API key **`sk-e28ca7ede294508d-1xegnp-e9fdf418`** (atual, na Vercel)
+- Deploy Vercel concluído (crons ativos): pipeline validado — **captions `ready` no DB** (ex.: "Perfume Masculino Azzaro", "Auxiliar Partida...")
+- Sheets exportando 10 ofertas/run + readback OK
+- Batch de captions reduzido para **3/execução** (`CAPTION_BATCH`), `maxDuration=300` — timeout resolvido
+- Nenhuma oferta em `failed` (import do Sheets auto-curou os antigos)
 
-### P2 — Auto-dispatch (aguarda dados do banco)
+### P1 — Auto-dispatch (o ÚNICO passo restante, aguarda dados do banco)
 - Banco tem **0 grupos** (`wa_groups` vazio) → nada a enfileirar até cadastrar/ativar grupo em `/dashboard/grupos`
 - Providers afiliados existentes: generic-tag, livelo, meliuz (ativos)
 - Após grupo: em `/dashboard/disparos` → Auto-dispatch ON + grupos + provider default → salvar
+- `app_settings` atual: auto_dispatch_enabled=false, group_ids=[], default_affiliate_provider_id=null
 
-### P3 — Deploy Vercel
-- Push + deploy (`vercel deploy --prebuilt --prod` ou CI) para ativar crons e novo código
-- Validar `/api/cron/pipeline` com `x-cron-secret`
-
-### P4 — Segurança/config pós-ligado
-- Decidir se `requireApiKey=true` no 9router remoto (recomendado — exposto)
-- `NINE_ROUTER_API_KEY` na Vercel para autenticar
-- Opcional: trocar senha do dashboard periódicamente
+### P2 — Config pós-ligado
+- `requireApiKey=true` já é o comportamento do 9router remoto (exposto à internet)
+- Decidir frequência: captions pendentes processam 3/cron (11:15/16:15/21:15 UTC)
 
 ---
 
@@ -177,7 +175,10 @@ gcloud iam service-accounts list
 | Risco | Mitigação |
 |-------|-----------|
 | 9router free perde sqlite em redeploy/restart da Render | Keepalive 24/7 evita sleep; se Render reiniciar, reconectar providers (~5min) |
-| API key local não serve no remoto | Gerar key nova no dashboard remoto |
-| Sem grupos cadastrados → auto-dispatch ocioso | Cadastrar grupo em `/dashboard/grupos` |
-| Cron Vercel requer redeploy p/ ativar `vercel.json` | Push/deploy pendente (P3) |
-| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` com `\n` — se quebrar no env | Re-adicionar com `printf`/pipe direto (como foi feito) |
+| OAuth do provider falha no dashboard remoto (ERR_CONNECTION_REFUSED em localhost) | **Conhecido**: alguns providers OAuth têm redirect fixo em localhost. Solução usada: conectar via CLI local e migrar? — **a conectar** (ver nota abaixo) |
+| API key do 9router invalida ao conectar OAuth | Gerar key nova no dashboard e atualizar `NINE_ROUTER_API_KEY` na Vercel (feito 2026-08-01) |
+| Sem grupos cadastrados → auto-dispatch ocioso | Cadastrar grupo em `/dashboard/grupos` (pendente) |
+| Timeout do cron pipeline (10 captions × 30s) | `maxDuration=300` + `CAPTION_BATCH=3` (feito) |
+| Token Vercel project-scoped falha no `vercel pull` | Usar token de CONTA (Account Settings → Tokens), não project token (feito) |
+
+> **Nota OAuth localhost**: o usuário reportou `ERR_CONNECTION_REFUSED` ao conectar OAuth no dashboard remoto. Investigação inicial: redirect montado como `http://localhost:PORT` no web app. **Se reaparecer**: testar conectar o provider no 9router LOCAL (`http://127.0.0.1:20128`) e verificar se a connection persiste no sqlite para migrar, ou verificar settings `tunnelUrl`/`tunnelEnabled` no dashboard.
