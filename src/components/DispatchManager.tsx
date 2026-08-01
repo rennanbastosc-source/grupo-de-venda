@@ -23,6 +23,22 @@ type Settings = {
   default_affiliate_provider_id: string | null;
 };
 type Provider = { id: string; name: string; active: boolean };
+type PipelineCounts = {
+  captionsPending: number;
+  captionsReady: number;
+  captionsFailed: number;
+  jobsQueued: number;
+  sentLast24h: number;
+};
+type ScrapeRun = {
+  source: string;
+  started_at: string;
+  finished_at: string | null;
+  ok: boolean;
+  items_found: number | null;
+  items_upserted: number | null;
+  error: string | null;
+};
 
 export function DispatchManager() {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -32,12 +48,14 @@ export function DispatchManager() {
   const [offerId, setOfferId] = useState("");
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dailyCap, setDailyCap] = useState("35");
   const [hourlyCap, setHourlyCap] = useState("10");
   const [intervalSec, setIntervalSec] = useState("45");
+  const [messageTemplate, setMessageTemplate] = useState("");
   const [autoEnabled, setAutoEnabled] = useState(false);
   const [autoGroupIds, setAutoGroupIds] = useState<string[]>([]);
   const [defaultProviderId, setDefaultProviderId] = useState("");
@@ -47,6 +65,47 @@ export function DispatchManager() {
   const [expandedError, setExpandedError] = useState<string | null>(null);
   const [testText, setTestText] = useState("");
   const [testBusy, setTestBusy] = useState(false);
+
+  const [sessionStatus, setSessionStatus] = useState<string>("—");
+  const [counts, setCounts] = useState<PipelineCounts | null>(null);
+  const [lastScrapeRuns, setLastScrapeRuns] = useState<ScrapeRun[]>([]);
+
+  const [scrapeBusy, setScrapeBusy] = useState(false);
+  const [pipelineBusy, setPipelineBusy] = useState(false);
+  const [dispatchBusy, setDispatchBusy] = useState(false);
+  const [scrapeMsg, setScrapeMsg] = useState<string | null>(null);
+  const [pipelineMsg, setPipelineMsg] = useState<string | null>(null);
+  const [dispatchMsg, setDispatchMsg] = useState<string | null>(null);
+  const [scrapeErr, setScrapeErr] = useState<string | null>(null);
+  const [pipelineErr, setPipelineErr] = useState<string | null>(null);
+  const [dispatchErr, setDispatchErr] = useState<string | null>(null);
+
+  const loadStatus = useCallback(async () => {
+    setStatusLoading(true);
+    try {
+      const res = await fetch("/api/pipeline/status");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "status");
+      setSessionStatus(data.sessionStatus ?? "—");
+      setCounts(data.counts ?? null);
+      setLastScrapeRuns(data.lastScrapeRuns ?? []);
+      if (data.settings) {
+        const s = data.settings as Settings;
+        setSettings(s);
+        setDailyCap(String(s.daily_cap));
+        setHourlyCap(String(s.hourly_cap));
+        setIntervalSec(String(s.min_interval_sec));
+        setMessageTemplate(s.message_template ?? "");
+        setAutoEnabled(!!s.auto_dispatch_enabled);
+        setAutoGroupIds(s.auto_dispatch_group_ids ?? []);
+        setDefaultProviderId(s.default_affiliate_provider_id ?? "");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro status");
+    } finally {
+      setStatusLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +137,7 @@ export function DispatchManager() {
       setDailyCap(String(s.daily_cap));
       setHourlyCap(String(s.hourly_cap));
       setIntervalSec(String(s.min_interval_sec));
+      setMessageTemplate(s.message_template ?? "");
       setAutoEnabled(!!s.auto_dispatch_enabled);
       setAutoGroupIds(s.auto_dispatch_group_ids ?? []);
       setDefaultProviderId(s.default_affiliate_provider_id ?? "");
@@ -99,9 +159,10 @@ export function DispatchManager() {
   useEffect(() => {
     const t = setTimeout(() => {
       void load();
+      void loadStatus();
     }, 0);
     return () => clearTimeout(t);
-  }, [load]);
+  }, [load, loadStatus]);
 
   function toggleGroup(id: string) {
     setGroupIds((prev) =>
@@ -136,6 +197,7 @@ export function DispatchManager() {
       );
       setGroupIds([]);
       await load();
+      await loadStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha");
     } finally {
@@ -145,6 +207,10 @@ export function DispatchManager() {
 
   async function saveSettings(e: FormEvent) {
     e.preventDefault();
+    if (!messageTemplate.includes("{{affiliate_url}}")) {
+      setError("Template deve conter {{affiliate_url}}");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -155,6 +221,7 @@ export function DispatchManager() {
           daily_cap: Number(dailyCap),
           hourly_cap: Number(hourlyCap),
           min_interval_sec: Number(intervalSec),
+          message_template: messageTemplate,
           auto_dispatch_enabled: autoEnabled,
           auto_dispatch_group_ids: autoGroupIds,
           default_affiliate_provider_id: defaultProviderId || null,
@@ -193,6 +260,75 @@ export function DispatchManager() {
     }
   }
 
+  async function runScrape() {
+    setScrapeBusy(true);
+    setScrapeMsg(null);
+    setScrapeErr(null);
+    try {
+      const res = await fetch("/api/scrape/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Scrape falhou");
+      setScrapeMsg(
+        `found ${data.found ?? 0} · upserted ${data.upserted ?? 0}` +
+          (data.errors?.length ? ` · erros: ${data.errors.join("; ")}` : ""),
+      );
+      await loadStatus();
+    } catch (e) {
+      setScrapeErr(e instanceof Error ? e.message : "Erro scrape");
+    } finally {
+      setScrapeBusy(false);
+    }
+  }
+
+  async function runPipeline() {
+    setPipelineBusy(true);
+    setPipelineMsg(null);
+    setPipelineErr(null);
+    try {
+      const res = await fetch("/api/pipeline/run", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Pipeline falhou");
+      setPipelineMsg(
+        `export ${data.exported ?? 0} · caption ${data.captioned ?? 0} · import ${data.imported ?? 0} · afiliado ${data.affiliates ?? 0} · fila ${data.enqueued ?? 0}` +
+          (data.errors?.length ? ` · erros: ${data.errors.join("; ")}` : ""),
+      );
+      await load();
+      await loadStatus();
+    } catch (e) {
+      setPipelineErr(e instanceof Error ? e.message : "Erro pipeline");
+    } finally {
+      setPipelineBusy(false);
+    }
+  }
+
+  async function runDispatch() {
+    setDispatchBusy(true);
+    setDispatchMsg(null);
+    setDispatchErr(null);
+    try {
+      const res = await fetch("/api/dispatch/run", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Dispatch falhou");
+      setDispatchMsg(
+        `processados ${data.processed ?? 0} · enviados ${data.sent ?? 0} · falhas ${data.failed ?? 0}` +
+          (data.skipped != null ? ` · skip ${data.skipped}` : "") +
+          (data.stoppedReason ? ` · parou: ${data.stoppedReason}` : ""),
+      );
+      await load();
+      await loadStatus();
+    } catch (e) {
+      setDispatchErr(e instanceof Error ? e.message : "Erro dispatch");
+    } finally {
+      setDispatchBusy(false);
+    }
+  }
+
+  const sessionOk = sessionStatus === "connected";
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted">
@@ -204,95 +340,179 @@ export function DispatchManager() {
           Gerenciar sessão em Bot
         </a>
       </p>
-      <form
-        onSubmit={onEnqueue}
-        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal"
-      >
-        <h2 className="text-sm font-black uppercase tracking-tight text-ink">
-          Enfileirar disparo
-        </h2>
-        <label className="block text-sm">
-          <span className="b-label">Oferta aprovada</span>
-          <select
-            required
-            value={offerId}
-            onChange={(e) => setOfferId(e.target.value)}
-            className="b-input"
+
+      {/* 1. Status do pipeline */}
+      <div className="border-[3px] border-ink bg-white p-4 shadow-brutal">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-black uppercase tracking-tight text-ink">
+            Status do pipeline
+          </h2>
+          <button
+            type="button"
+            onClick={() => void loadStatus()}
+            disabled={statusLoading}
+            className="b-btn b-btn-ghost !py-1.5"
           >
-            <option value="">Selecione</option>
-            {offers.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset className="text-sm">
-          <legend className="b-label">Grupos ativos</legend>
-          <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
-            {groups.length === 0 ? (
-              <p className="text-muted">Nenhum grupo ativo.</p>
-            ) : (
-              groups.map((g) => (
-                <label key={g.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={groupIds.includes(g.id)}
-                    onChange={() => toggleGroup(g.id)}
-                  />
-                  <span>
-                    {g.name}{" "}
-                    <span className="font-mono text-xs text-muted">
-                      {g.jid}
-                    </span>
-                  </span>
-                </label>
-              ))
-            )}
-          </div>
-        </fieldset>
-        <button
-          type="submit"
-          disabled={busy || !offerId || groupIds.length === 0}
-          className="w-fit b-btn"
-        >
-          Enfileirar
-        </button>
-      </form>
+            {statusLoading ? "…" : "Atualizar"}
+          </button>
+        </div>
 
-      <form
-        onSubmit={onTestSend}
-        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal"
-      >
-        <h2 className="text-sm font-black uppercase tracking-tight text-ink">
-          Teste manual
-        </h2>
-        <p className="text-xs text-muted">
-          Envia texto livre (máx. 200) para o próprio número do bot conectado.
-        </p>
-        <label className="block text-sm">
-          <span className="b-label">Mensagem</span>
-          <textarea
-            value={testText}
-            onChange={(e) => setTestText(e.target.value.slice(0, 200))}
-            maxLength={200}
-            rows={3}
-            placeholder="Olá — teste de disparo"
-            className="b-input text-ink"
-          />
-          <span className="mt-1 block text-xs text-muted">
-            {testText.length}/200
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted">
+            WhatsApp
           </span>
-        </label>
-        <button
-          type="submit"
-          disabled={testBusy || !testText.trim()}
-          className="w-fit b-btn"
-        >
-          {testBusy ? "Enviando…" : "Enviar teste"}
-        </button>
-      </form>
+          <span
+            className={
+              "border-[2px] border-ink px-2 py-0.5 text-xs font-black uppercase " +
+              (sessionOk
+                ? "bg-lime text-ink"
+                : "bg-danger text-white")
+            }
+          >
+            {sessionStatus}
+          </span>
+        </div>
 
+        {counts ? (
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {(
+              [
+                ["Captions pend.", counts.captionsPending],
+                ["Captions ok", counts.captionsReady],
+                ["Captions falha", counts.captionsFailed],
+                ["Jobs na fila", counts.jobsQueued],
+                ["Enviados 24h", counts.sentLast24h],
+              ] as const
+            ).map(([label, n]) => (
+              <div
+                key={label}
+                className="border-[2px] border-ink bg-[#fafaf5] px-2 py-2 text-center"
+              >
+                <div className="text-lg font-black tabular-nums text-ink">
+                  {n}
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                  {label}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="mt-4">
+          <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-muted">
+            Últimos scrapes
+          </h3>
+          {lastScrapeRuns.length === 0 ? (
+            <p className="mt-1 text-xs text-muted">Nenhum scrape ainda.</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-[#e5e5dc] border-[2px] border-ink">
+              {lastScrapeRuns.map((r, i) => (
+                <li
+                  key={`${r.source}-${r.started_at}-${i}`}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5 text-xs"
+                >
+                  <span className="font-bold text-ink">{r.source}</span>
+                  <span
+                    className={
+                      r.ok ? "font-bold text-ok" : "font-bold text-danger"
+                    }
+                  >
+                    {r.ok ? "ok" : "falha"}
+                  </span>
+                  <span className="text-muted">
+                    found {r.items_found ?? 0} · up {r.items_upserted ?? 0}
+                  </span>
+                  <span className="font-mono text-muted">
+                    {r.started_at
+                      ? new Date(r.started_at).toLocaleString("pt-BR", {
+                          timeZone: "UTC",
+                        })
+                      : "—"}{" "}
+                    UTC
+                  </span>
+                  {r.error ? (
+                    <span className="w-full truncate text-danger font-bold">
+                      {r.error}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Ações manuais */}
+      <div className="border-[3px] border-ink bg-white p-4 shadow-brutal">
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink">
+          Ações manuais
+        </h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-2 content-start">
+            <button
+              type="button"
+              disabled={scrapeBusy}
+              onClick={() => void runScrape()}
+              className="b-btn w-full"
+            >
+              {scrapeBusy ? "Scrapando…" : "Rodar scrape agora"}
+            </button>
+            {scrapeMsg ? (
+              <p className="text-xs text-muted" role="status">
+                {scrapeMsg}
+              </p>
+            ) : null}
+            {scrapeErr ? (
+              <p className="text-xs text-danger font-bold" role="alert">
+                {scrapeErr}
+              </p>
+            ) : null}
+          </div>
+          <div className="grid gap-2 content-start">
+            <button
+              type="button"
+              disabled={pipelineBusy}
+              onClick={() => void runPipeline()}
+              className="b-btn w-full"
+            >
+              {pipelineBusy ? "Pipeline…" : "Rodar pipeline agora"}
+            </button>
+            {pipelineMsg ? (
+              <p className="text-xs text-muted" role="status">
+                {pipelineMsg}
+              </p>
+            ) : null}
+            {pipelineErr ? (
+              <p className="text-xs text-danger font-bold" role="alert">
+                {pipelineErr}
+              </p>
+            ) : null}
+          </div>
+          <div className="grid gap-2 content-start">
+            <button
+              type="button"
+              disabled={dispatchBusy}
+              onClick={() => void runDispatch()}
+              className="b-btn w-full"
+            >
+              {dispatchBusy ? "Processando…" : "Processar fila agora"}
+            </button>
+            {dispatchMsg ? (
+              <p className="text-xs text-muted" role="status">
+                {dispatchMsg}
+              </p>
+            ) : null}
+            {dispatchErr ? (
+              <p className="text-xs text-danger font-bold" role="alert">
+                {dispatchErr}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Configuração */}
       <form
         onSubmit={saveSettings}
         className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-3"
@@ -336,6 +556,28 @@ export function DispatchManager() {
             className="b-input"
           />
         </label>
+
+        <div className="sm:col-span-3 border-t-[3px] border-ink pt-3 grid gap-2">
+          <h2 className="text-sm font-black uppercase tracking-tight text-ink">
+            Template da mensagem
+          </h2>
+          <p className="text-xs text-muted">
+            Obrigatório:{" "}
+            <code className="font-mono font-bold text-ink">
+              {"{{affiliate_url}}"}
+            </code>
+          </p>
+          <label className="block text-sm">
+            <span className="sr-only">Template</span>
+            <textarea
+              value={messageTemplate}
+              onChange={(e) => setMessageTemplate(e.target.value)}
+              rows={5}
+              className="b-input font-mono text-sm text-ink"
+              placeholder={"Oferta: {{title}}\n{{affiliate_url}}"}
+            />
+          </label>
+        </div>
 
         <div className="sm:col-span-3 border-t-[3px] border-ink pt-3 grid gap-3">
           <h2 className="text-sm font-black uppercase tracking-tight text-ink">
@@ -404,6 +646,97 @@ export function DispatchManager() {
         </button>
       </form>
 
+      {/* 4. Enfileirar manual */}
+      <form
+        onSubmit={onEnqueue}
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal"
+      >
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink">
+          Enfileirar disparo
+        </h2>
+        <label className="block text-sm">
+          <span className="b-label">Oferta aprovada</span>
+          <select
+            required
+            value={offerId}
+            onChange={(e) => setOfferId(e.target.value)}
+            className="b-input"
+          >
+            <option value="">Selecione</option>
+            {offers.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset className="text-sm">
+          <legend className="b-label">Grupos ativos</legend>
+          <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
+            {groups.length === 0 ? (
+              <p className="text-muted">Nenhum grupo ativo.</p>
+            ) : (
+              groups.map((g) => (
+                <label key={g.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={groupIds.includes(g.id)}
+                    onChange={() => toggleGroup(g.id)}
+                  />
+                  <span>
+                    {g.name}{" "}
+                    <span className="font-mono text-xs text-muted">
+                      {g.jid}
+                    </span>
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        </fieldset>
+        <button
+          type="submit"
+          disabled={busy || !offerId || groupIds.length === 0}
+          className="w-fit b-btn"
+        >
+          Enfileirar
+        </button>
+      </form>
+
+      {/* 5. Teste manual */}
+      <form
+        onSubmit={onTestSend}
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal"
+      >
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink">
+          Teste manual
+        </h2>
+        <p className="text-xs text-muted">
+          Envia texto livre (máx. 200) para o próprio número do bot conectado.
+        </p>
+        <label className="block text-sm">
+          <span className="b-label">Mensagem</span>
+          <textarea
+            value={testText}
+            onChange={(e) => setTestText(e.target.value.slice(0, 200))}
+            maxLength={200}
+            rows={3}
+            placeholder="Olá — teste de disparo"
+            className="b-input text-ink"
+          />
+          <span className="mt-1 block text-xs text-muted">
+            {testText.length}/200
+          </span>
+        </label>
+        <button
+          type="submit"
+          disabled={testBusy || !testText.trim()}
+          className="w-fit b-btn"
+        >
+          {testBusy ? "Enviando…" : "Enviar teste"}
+        </button>
+      </form>
+
       {msg ? (
         <p className="text-sm text-muted" role="status">
           {msg}
@@ -415,6 +748,7 @@ export function DispatchManager() {
         </p>
       ) : null}
 
+      {/* 6. Histórico */}
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           <span className="b-label">Status</span>
@@ -458,10 +792,18 @@ export function DispatchManager() {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b-2 border-ink bg-lime text-ink">
               <tr>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Oferta</th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Grupo</th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Erro</th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">
+                  Oferta
+                </th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">
+                  Grupo
+                </th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">
+                  Erro
+                </th>
               </tr>
             </thead>
             <tbody>
