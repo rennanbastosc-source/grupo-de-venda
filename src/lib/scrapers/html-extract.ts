@@ -7,6 +7,22 @@ export type ExtractOpts = {
   max?: number;
 };
 
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isWeakTitle(title: string): boolean {
+  const t = title.trim();
+  return !t || /^[A-Z0-9]{10}$/i.test(t) || /^[\d\s-_]+$/.test(t) || t.startsWith("http");
+}
+
+/** Janela HTML após o anchor: até o próximo `<a` ou ~600 chars (preço em DIV separado, ex: ML/Shopee). */
+function neighborWindow(html: string, start: number, limit = 600): string {
+  const slice = html.slice(start, start + limit);
+  const nextA = slice.search(/<a\b/i);
+  return nextA >= 0 ? slice.slice(0, nextA) : slice;
+}
+
 /** Lightweight HTML link harvest — no cheerio. */
 export function extractOffersFromHtml(
   html: string,
@@ -18,7 +34,7 @@ export function extractOffersFromHtml(
   const seen = new Set<string>();
   const re = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null && out.length < max) {
+  while ((m = re.exec(html)) !== null) {
     let href = m[1];
     if (href.startsWith("//")) href = `https:${href}`;
     else if (href.startsWith("/")) {
@@ -30,12 +46,47 @@ export function extractOffersFromHtml(
     }
     if (!href.includes(opts.hostIncludes)) continue;
     if (!opts.hrefPattern.test(href)) continue;
-    if (seen.has(href)) continue;
+
+    const inner = stripTags(m[2]);
+
+    // href já visto (ex: anchor de preço após o de título): enriquece a oferta existente
+    if (seen.has(href)) {
+      const existing = out.find((o) => o.url === href);
+      if (existing) {
+        if (existing.priceCents == null) {
+          const { priceCents, originalPriceCents } = parsePricesFromText(inner);
+          if (priceCents != null) {
+            existing.priceCents = priceCents;
+            if (originalPriceCents != null) {
+              existing.originalPriceCents = originalPriceCents;
+            }
+          }
+        }
+        if (isWeakTitle(existing.title)) {
+          existing.title = cleanTitle(inner.slice(0, 200), href).slice(0, 240);
+        }
+      }
+      continue;
+    }
     seen.add(href);
-    const inner = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
     const title = cleanTitle(inner.slice(0, 200), href).slice(0, 240);
     const { priceCents, originalPriceCents } = parsePricesFromText(inner);
-    out.push({ title, url: href, priceCents, originalPriceCents });
+    const offer: RawOffer = { title, url: href, priceCents, originalPriceCents };
+
+    // Preço costuma ficar fora do `<a>` (DIV separado com spans em ML/Shopee)
+    if (offer.priceCents == null) {
+      const windowHtml = neighborWindow(html, m.index + m[0].length);
+      const neighborPrices = parsePricesFromText(stripTags(windowHtml));
+      if (neighborPrices.priceCents != null) {
+        offer.priceCents = neighborPrices.priceCents;
+        if (neighborPrices.originalPriceCents != null) {
+          offer.originalPriceCents = neighborPrices.originalPriceCents;
+        }
+      }
+    }
+
+    if (out.length < max) out.push(offer);
   }
   return out;
 }
@@ -67,7 +118,7 @@ export function titleFromUrl(url: string): string {
 // Trata títulos incompletos/numéricos (ex: ASIN puro ou IDs da Amazon)
 export function cleanTitle(title: string, url: string): string {
   const t = title.trim();
-  if (!t || /^[A-Z0-9]{10}$/i.test(t) || /^[\d\s-_]+$/.test(t) || t.startsWith("http")) {
+  if (isWeakTitle(t)) {
     const extracted = titleFromUrl(url);
     if (extracted && !/^[A-Z0-9]{10}$/i.test(extracted) && !/^[\d\s-_]+$/.test(extracted)) {
       return extracted;

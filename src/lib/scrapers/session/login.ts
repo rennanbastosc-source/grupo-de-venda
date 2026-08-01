@@ -172,6 +172,10 @@ async function loginShopee(): Promise<PlatformSession> {
       };
     }
 
+    // Nota (honestidade do handshake): para a Shopee, o que autentica de
+    // verdade é o profile de browser persistido no Firecrawl
+    // (FIRECRAWL_SHOPEE_PROFILE) — estes cookies anônimos de navegação
+    // (SPC_EC/SPC_SI) não são login real, mas podem ajudar em scraping parcial.
     return {
       source: "shopee",
       cookies,

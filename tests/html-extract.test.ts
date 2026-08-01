@@ -96,4 +96,74 @@ describe("html-extract", () => {
     expect(cleanTitle("135 4144914 5222909", urlWithSlug)).toBe("Fone de Ouvido Bluetooth Sem Fio");
     expect(cleanTitle("B0876MJBG6", urlWithSlug)).toBe("Fone de Ouvido Bluetooth Sem Fio");
   });
+
+  it("merge: anchor de título sem preço + anchor de preço com o MESMO href vira 1 oferta com priceCents", () => {
+    const html = `
+      <a href="https://produto.mercadolivre.com.br/p/MLB123">Fone Bluetooth X2</a>
+      <a href="https://produto.mercadolivre.com.br/p/MLB123">
+        <span class="andes-money-amount__currency-symbol">R$</span>
+        <span class="andes-money-amount__fraction">59</span>
+        <span class="andes-money-amount__cents">99</span>
+      </a>
+    `;
+    const offers = extractOffersFromHtml(
+      html,
+      "https://www.mercadolivre.com.br",
+      {
+        hostIncludes: "mercadolivre.com.br",
+        hrefPattern: /\/p\/MLB\d+/i,
+      },
+    );
+    expect(offers).toHaveLength(1);
+    expect(offers[0].title).toBe("Fone Bluetooth X2");
+    expect(offers[0].priceCents).toBe(5999);
+  });
+
+  it("preço em DIV fora do anchor (estrutura real ML) preenche priceCents", () => {
+    const html = `
+      <a href="https://produto.mercadolivre.com.br/p/MLB1">Título</a>
+      <div>
+        <span class="andes-money-amount__currency-symbol">R$</span>
+        <span class="andes-money-amount__fraction">59</span>
+        <span class="andes-money-amount__cents">99</span>
+      </div>
+      <a href="https://produto.mercadolivre.com.br/p/MLB2">Outro Produto</a>
+    `;
+    const offers = extractOffersFromHtml(
+      html,
+      "https://www.mercadolivre.com.br",
+      {
+        hostIncludes: "mercadolivre.com.br",
+        hrefPattern: /\/p\/MLB\d+/i,
+      },
+    );
+    expect(offers).toHaveLength(2);
+    expect(offers[0].url).toContain("/p/MLB1");
+    expect(offers[0].title).toBe("Título");
+    expect(offers[0].priceCents).toBe(5999);
+    expect(offers[1].priceCents).toBeUndefined();
+  });
+
+  it("preço fora do anchor com 'de R$ X por R$ Y' preenche priceCents e originalPriceCents", () => {
+    const html = `
+      <a href="https://produto.mercadolivre.com.br/p/MLB7">Smartphone Turbo</a>
+      <div>
+        <span>de</span> <span class="andes-money-amount__currency-symbol">R$</span>
+        <span class="andes-money-amount__fraction">1.499</span><span class="andes-money-amount__cents">00</span>
+        <span>por</span> <span class="andes-money-amount__currency-symbol">R$</span>
+        <span class="andes-money-amount__fraction">1.199</span><span class="andes-money-amount__cents">90</span>
+      </div>
+    `;
+    const offers = extractOffersFromHtml(
+      html,
+      "https://www.mercadolivre.com.br",
+      {
+        hostIncludes: "mercadolivre.com.br",
+        hrefPattern: /\/p\/MLB\d+/i,
+      },
+    );
+    expect(offers).toHaveLength(1);
+    expect(offers[0].priceCents).toBe(119990);
+    expect(offers[0].originalPriceCents).toBe(149900);
+  });
 });
