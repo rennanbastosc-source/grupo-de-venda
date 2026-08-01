@@ -13,13 +13,15 @@ export type ProcessResult = {
 async function loadSettings(supabase: SupabaseClient): Promise<RateSettings> {
   const { data } = await supabase
     .from("app_settings")
-    .select("daily_cap, hourly_cap, min_interval_sec")
+    .select("daily_cap, hourly_cap, min_interval_sec, sleep_start, sleep_end")
     .eq("id", 1)
     .maybeSingle();
   return {
     daily_cap: data?.daily_cap ?? 35,
     hourly_cap: data?.hourly_cap ?? 10,
     min_interval_sec: data?.min_interval_sec ?? 45,
+    sleep_start: data?.sleep_start ?? null,
+    sleep_end: data?.sleep_end ?? null,
   };
 }
 

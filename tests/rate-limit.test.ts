@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canSendNow } from "@/lib/dispatch/rate-limit";
+import { canSendNow, isWithinSleepWindow } from "@/lib/dispatch/rate-limit";
 
 const settings = {
   daily_cap: 35,
@@ -7,11 +7,13 @@ const settings = {
   min_interval_sec: 45,
 };
 
+const under = { daily: 0, hourly: 0, lastSentAt: null };
+
 describe("canSendNow", () => {
   it("allows when under caps", () => {
     expect(
       canSendNow(
-        { daily: 0, hourly: 0, lastSentAt: null },
+        under,
         settings,
         new Date("2026-07-29T12:00:00Z"),
       ).ok,
@@ -65,4 +67,82 @@ describe("canSendNow", () => {
       ).ok,
     ).toBe(true);
   });
+
+  it("allows when sleep window disabled (null)", () => {
+    const r = canSendNow(
+      under,
+      { ...settings, sleep_start: null, sleep_end: null },
+      new Date("2026-07-29T12:00:00Z"),
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("blocks simple sleep window 08:00–18:00 at 09:00 SP", () => {
+    // 2026-07-29T12:00:00Z = 09:00 America/Sao_Paulo
+    const r = canSendNow(
+      under,
+      { ...settings, sleep_start: "08:00", sleep_end: "18:00" },
+      new Date("2026-07-29T12:00:00Z"),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.reason).toMatch(/descanso/i);
+      expect(r.reason).toMatch(/08:00/);
+      expect(r.reason).toMatch(/18:00/);
+    }
+  });
+
+  it("allows outside simple sleep window at 21:00 SP", () => {
+    // 2026-07-30T00:00:00Z = 21:00 America/Sao_Paulo
+    const r = canSendNow(
+      under,
+      { ...settings, sleep_start: "08:00", sleep_end: "18:00" },
+      new Date("2026-07-30T00:00:00Z"),
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("blocks overnight sleep window 22:00–07:00 at 22:00 SP", () => {
+    // 2026-07-29T01:00:00Z = 2026-07-28 22:00 America/Sao_Paulo
+    const r = canSendNow(
+      under,
+      { ...settings, sleep_start: "22:00", sleep_end: "07:00" },
+      new Date("2026-07-29T01:00:00Z"),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/descanso/i);
+  });
+
+  it("allows outside overnight sleep window at 09:00 SP", () => {
+    // 2026-07-29T12:00:00Z = 09:00 America/Sao_Paulo
+    const r = canSendNow(
+      under,
+      { ...settings, sleep_start: "22:00", sleep_end: "07:00" },
+      new Date("2026-07-29T12:00:00Z"),
+    );
+    expect(r.ok).toBe(true);
+  });
 });
+
+describe("isWithinSleepWindow", () => {
+  it("false when start === end", () => {
+    expect(
+      isWithinSleepWindow(new Date("2026-07-29T12:00:00Z"), {
+        ...settings,
+        sleep_start: "10:00",
+        sleep_end: "10:00",
+      }),
+    ).toBe(false);
+  });
+
+  it("false when invalid format", () => {
+    expect(
+      isWithinSleepWindow(new Date("2026-07-29T12:00:00Z"), {
+        ...settings,
+        sleep_start: "8:00",
+        sleep_end: "18:00",
+      }),
+    ).toBe(false);
+  });
+});
+

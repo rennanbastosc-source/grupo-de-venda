@@ -5,12 +5,16 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const SETTINGS_SELECT =
-  "daily_cap, hourly_cap, min_interval_sec, message_template, auto_dispatch_enabled, auto_dispatch_group_ids, default_affiliate_provider_id, updated_at";
+  "daily_cap, hourly_cap, min_interval_sec, sleep_start, sleep_end, message_template, auto_dispatch_enabled, auto_dispatch_group_ids, default_affiliate_provider_id, updated_at";
+
+const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const DEFAULTS = {
   daily_cap: 35,
   hourly_cap: 10,
   min_interval_sec: 45,
+  sleep_start: null as string | null,
+  sleep_end: null as string | null,
   message_template:
     "{{caption}}\n\n🔗 {{affiliate_url}}",
   auto_dispatch_enabled: false,
@@ -102,6 +106,22 @@ export async function PATCH(request: Request) {
       );
     }
     patch.default_affiliate_provider_id = v;
+  }
+
+  for (const key of ["sleep_start", "sleep_end"] as const) {
+    if (body[key] !== undefined) {
+      const v = body[key];
+      if (v === null || v === "") {
+        patch[key] = null;
+      } else if (typeof v === "string" && HHMM_RE.test(v)) {
+        patch[key] = v;
+      } else {
+        return NextResponse.json(
+          { error: `${key} deve ser HH:MM ou null` },
+          { status: 400 },
+        );
+      }
+    }
   }
 
   const { data, error } = await auth.supabase

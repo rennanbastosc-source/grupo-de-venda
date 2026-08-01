@@ -1,4 +1,5 @@
 import { SessionPanel } from "@/components/SessionPanel";
+import { SleepWindowCard } from "@/components/SleepWindowCard";
 
 export default function BotPage() {
   return (
@@ -14,6 +15,7 @@ export default function BotPage() {
         </p>
       </div>
       <SessionPanel />
+      <SleepWindowCard />
     </div>
   );
 }
