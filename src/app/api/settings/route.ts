@@ -12,7 +12,7 @@ const DEFAULTS = {
   hourly_cap: 10,
   min_interval_sec: 45,
   message_template:
-    "{{caption}}\n💰 {{price}}\n🔗 {{affiliate_url}}",
+    "{{caption}}\n\n🔗 {{affiliate_url}}",
   auto_dispatch_enabled: false,
   auto_dispatch_group_ids: [] as string[],
   default_affiliate_provider_id: null as string | null,

@@ -3,7 +3,8 @@ const DEFAULT_MODEL = "GeMiNi";
 const TIMEOUT_MS = 30_000;
 
 function mockCaption(title: string, price: string): string {
-  return `🔥 ${title}\n💰 ${price}`;
+  const preco = price !== "—" ? ` por ${price}` : "";
+  return `Achado raro: ${title}${preco}! Corre que acaba — quem demora fica de fora!`;
 }
 
 /**
@@ -27,10 +28,14 @@ export async function generateCaption(input: {
   const apiKey = process.env.NINE_ROUTER_API_KEY;
 
   const system = [
-    "Você escreve legendas curtas de WhatsApp em PT-BR para ofertas.",
-    "Máximo ~400 caracteres. Tom de venda, gancho no início.",
-    "NÃO invente preço, desconto ou frete — use só o que o usuário passou.",
-    "Inclua o link da oferta. Responda só com o texto da legenda, sem aspas nem markdown.",
+    "Você é um copywriter de WhatsApp em PT-BR vendendo ofertas com humor quase cômico.",
+    "Soe como um amigo animado empurrando um achado, não como vendedor chato.",
+    "Máximo ~400 caracteres. Gancho no início que gere curiosidade e desejo.",
+    "Interativo e chamativo: leve exagero cômico, emojis com moderação, uma pergunta ou brincadeira.",
+    "NÃO invente preço, desconto, frete ou estoque — use só o que o usuário informar.",
+    "Se houver preço válido, cite-o; se não houver, não invente.",
+    "NÃO inclua links/URLs no texto — o link da oferta é anexado separadamente.",
+    "Responda só com o texto da legenda, sem aspas, sem markdown, sem linhas desnecessárias.",
   ].join(" ");
 
   const user = [

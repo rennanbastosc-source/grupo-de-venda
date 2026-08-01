@@ -44,7 +44,7 @@ export async function enqueueDispatch(
 
   const template =
     settings?.message_template ??
-    "{{caption}}\n💰 {{price}}\n🔗 {{affiliate_url}}";
+    "{{caption}}\n\n🔗 {{affiliate_url}}";
   const message_body = buildMessage(template, {
     title: offer.title,
     price: formatPriceCents(offer.price_cents),

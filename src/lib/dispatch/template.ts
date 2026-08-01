@@ -13,8 +13,7 @@ export function buildMessage(
     /\{\{(title|price|affiliate_url|caption)\}\}/g,
     (_, k: keyof MessageVars) => {
       if (k === "caption") {
-        const c = vars.caption?.trim();
-        return c || vars.title || "";
+        return vars.caption?.trim() ?? "";
       }
       return vars[k] ?? "";
     },

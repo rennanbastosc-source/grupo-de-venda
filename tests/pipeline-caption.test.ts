@@ -15,7 +15,8 @@ describe("generateCaption", () => {
       price: "R$ 10,00",
       url: "https://ex.com/x",
     });
-    expect(text).toBe("🔥 Fone X\n💰 R$ 10,00");
+    expect(text).toContain("Fone X");
+    expect(text).not.toContain("http");
   });
 
   it("chama OpenAI-compat e devolve content", async () => {
@@ -46,7 +47,7 @@ describe("generateCaption", () => {
 });
 
 describe("buildMessage caption", () => {
-  it("usa caption e cai no title se vazio", async () => {
+  it("usa caption e não cai no title se vazio", async () => {
     const { buildMessage } = await import("@/lib/dispatch/template");
     expect(
       buildMessage("{{caption}}\n🔗 {{affiliate_url}}", {
@@ -63,7 +64,7 @@ describe("buildMessage caption", () => {
         affiliate_url: "https://a",
         caption: "",
       }),
-    ).toBe("Título");
+    ).not.toContain("Título");
   });
 });
 
