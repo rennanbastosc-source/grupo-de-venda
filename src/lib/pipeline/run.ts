@@ -27,6 +27,7 @@ const HEADER = [
 ] as const;
 
 const BATCH = 10;
+const CAPTION_BATCH = 3;
 
 type OfferRow = {
   id: string;
@@ -164,7 +165,7 @@ async function generateCaptions(
     .in("caption_status", ["pending", "none"])
     .in("status", ["new", "approved"])
     .order("scraped_at", { ascending: true })
-    .limit(BATCH);
+    .limit(CAPTION_BATCH);
 
   if (error) {
     result.errors.push(`caption: ${error.message}`);

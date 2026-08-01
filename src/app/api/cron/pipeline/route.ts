@@ -3,7 +3,7 @@ import { runOfferPipeline } from "@/lib/pipeline/run";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const denied = assertCronSecret(request);
