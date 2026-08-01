@@ -95,6 +95,26 @@ export function createWorkerServer() {
       return json(res, 202, { ok: true });
     }
 
+    if (method === "GET" && url.pathname === "/groups") {
+      const socket = getSocket();
+      if (!socket) {
+        return json(res, 503, { error: "socket indisponível" });
+      }
+      try {
+        const groups = await socket.groupFetchAllParticipating();
+        const list = Object.entries(groups).map(([jid, g]) => ({
+          jid,
+          name: g.subject ?? "",
+          participantCount: g.participants?.length ?? 0,
+        }));
+        return json(res, 200, { groups: list });
+      } catch (e) {
+        return json(res, 500, {
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
     if (method === "POST" && url.pathname === "/send") {
       const s = getSessionState();
       if (s.status !== "connected") {
