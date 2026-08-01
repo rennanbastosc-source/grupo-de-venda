@@ -1,10 +1,11 @@
 import type { AffiliateProvider, EmitResult } from "./types";
 import { emitGeneric } from "./providers/generic";
+import { emitMercadoLivre } from "./providers/mercadolivre";
 
-export function emitWithProvider(
+export async function emitWithProvider(
   provider: Pick<AffiliateProvider, "kind" | "config" | "active">,
   originalUrl: string,
-): EmitResult {
+): Promise<EmitResult> {
   if (!provider.active) {
     return { ok: false, error: "Provider inativo" };
   }
@@ -26,6 +27,8 @@ export function emitWithProvider(
     }
     case "generic":
       return emitGeneric(originalUrl, config);
+    case "mercadolivre":
+      return emitMercadoLivre(originalUrl, config);
     default:
       return { ok: false, error: `Kind desconhecido: ${provider.kind}` };
   }

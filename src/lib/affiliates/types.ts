@@ -1,4 +1,4 @@
-export type ProviderKind = "livelo" | "meliuz" | "generic";
+export type ProviderKind = "livelo" | "meliuz" | "generic" | "mercadolivre";
 
 export type ProviderConfig = {
   template?: string;
