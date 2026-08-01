@@ -23,6 +23,24 @@ describe("canonicalizeUrl", () => {
   it("throws on invalid", () => {
     expect(() => canonicalizeUrl("not-a-url")).toThrow();
   });
+
+  it("ML: remove tracking de oferta/listagem e fragment, mantém só o path", () => {
+    const c = canonicalizeUrl(
+      "https://www.mercadolivre.com.br/smartphone-samsung-galaxy-s23/p/MLB12345678?pdp_filters=deal%3AMLB779362-1&deal_print_id=7128910dabc&tracking_id=bfd644b2xyz&wid=MLB4812130742&sid=offers&position=10&lm=123&page=2&utm_source=newsletter#polycard_client=offers",
+    );
+    expect(c).toBe(
+      "https://mercadolivre.com.br/smartphone-samsung-galaxy-s23/p/MLB12345678",
+    );
+  });
+
+  it("ML: matt_word/matt_tool (link de afiliado) NÃO são removidos", () => {
+    const c = canonicalizeUrl(
+      "https://www.mercadolivre.com.br/smartphone-samsung-galaxy-s23/p/MLB12345678?pdp_filters=deal%3AMLB779362-1&tracking_id=bfd644b2xyz&sid=offers&utm_source=newsletter&matt_word=celular&matt_tool=afiliado#polycard_client=offers",
+    );
+    expect(c).toBe(
+      "https://mercadolivre.com.br/smartphone-samsung-galaxy-s23/p/MLB12345678?matt_tool=afiliado&matt_word=celular",
+    );
+  });
 });
 
 describe("parsePriceToCents", () => {

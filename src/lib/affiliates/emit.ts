@@ -51,12 +51,13 @@ export async function emitAffiliateLink(
   if (offerId) {
     const { data: offer, error } = await supabase
       .from("offers")
-      .select("id, url")
+      .select("id, url, url_canonical")
       .eq("id", offerId)
       .maybeSingle();
     if (error) return { ok: false, status: 500, error: error.message };
     if (!offer) return { ok: false, status: 404, error: "Oferta não encontrada" };
-    if (!originalUrl) originalUrl = offer.url;
+    // url_canonical já vem limpo (canonicalizeUrl); cai no url cru se vazio
+    if (!originalUrl) originalUrl = offer.url_canonical || offer.url;
   }
 
   if (!originalUrl) {
@@ -74,7 +75,7 @@ export async function emitAffiliateLink(
   }
 
   const provider = asProvider(prow);
-  const result = emitWithProvider(provider, originalUrl);
+  const result = await emitWithProvider(provider, originalUrl);
 
   if (!result.ok) {
     const { data: failed, error: ferr } = await supabase

@@ -14,14 +14,24 @@ const TRACKING = new Set([
   "sp_csd",
   "dib",
   "dib_tag",
-  "matt_tool",
-  "matt_word",
   "th",
   "keywords",
   "qid",
   "sr",
   "sprefix",
   "crid",
+  // Tracking ML/Shopee de listagem e oferta (matt_* fica: é o link de afiliado)
+  "deal_print_id",
+  "lm",
+  "page",
+  "pdp_filters",
+  "polycard_client",
+  "position",
+  "search_layout",
+  "searchvariation",
+  "sid",
+  "tracking_id",
+  "wid",
 ]);
 
 export function canonicalizeUrl(raw: string): string {
