@@ -45,10 +45,15 @@ export async function emitMercadoLivre(
         pageHtml,
       )?.[1];
       if (!freshCsrf || !metaToken) {
+        const blocked = /login|captcha|security|verific|bloquead/i.test(
+          pageHtml.slice(0, 4000),
+        );
+        console.error(
+          `[ML] csrf ausente: status=${page.status} url=${page.url} len=${pageHtml.length} antiBot=${blocked}`,
+        );
         return {
           ok: false,
-          error:
-            "Mercado Livre: falha ao obter CSRF do portal — sessão expirada? (sem _csrf/meta csrf-token)",
+          error: `Mercado Livre: falha ao obter CSRF do portal — sessão expirada ou IP bloqueado? (HTTP ${page.status}, url=${page.url}, antiBot=${blocked})`,
         };
       }
 
