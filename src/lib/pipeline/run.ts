@@ -251,6 +251,25 @@ async function importFromSheets(
   }
   if (values.length <= 1) return;
 
+  // status atual no DB: planilha é espelho (status fica stale após envio)
+  // e não deve rebaixar oferta já "sent" nem sobrescrever caption recém-gerada.
+  const sheetIds: string[] = [];
+  for (let i = 1; i < values.length; i++) {
+    const id = values[i]?.[0]?.trim();
+    if (id) sheetIds.push(id);
+  }
+  const { data: currentRows, error: currentErr } = await supabase
+    .from("offers")
+    .select("id, status, caption_status")
+    .in("id", sheetIds);
+  if (currentErr) {
+    result.errors.push(`import current: ${currentErr.message}`);
+    return;
+  }
+  const current = new Map(
+    (currentRows ?? []).map((o) => [o.id as string, o as { status: string; caption_status: string }]),
+  );
+
   for (let i = 1; i < values.length; i++) {
     const row = values[i] ?? [];
     const id = row[0]?.trim();
@@ -259,6 +278,7 @@ async function importFromSheets(
     const status = row[5]?.trim();
     const caption = row[6]?.trim() ?? "";
     const captionStatus = row[7]?.trim();
+    const cur = current.get(id);
 
     // values[0] = header (sheet row 1); values[i] = sheet row i+1
     const patch: Record<string, unknown> = {
@@ -266,7 +286,7 @@ async function importFromSheets(
       sheets_row: i + 1,
     };
 
-    if (caption) {
+    if (caption && cur?.caption_status !== "ready") {
       patch.caption = caption;
       if (
         captionStatus === "ready" ||
@@ -293,8 +313,8 @@ async function importFromSheets(
       status === "rejected" ||
       status === "sent"
     ) {
-      // não reabrir sent via sheet sem querer — só aplica se não for sent no sheet forçando downgrade de sent
-      if (status !== "sent") patch.status = status;
+      // não rebaixar oferta já enviada (sheet tem status stale)
+      if (status !== "sent" && cur?.status !== "sent") patch.status = status;
     }
 
     const { error, data } = await supabase
