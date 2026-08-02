@@ -1,6 +1,6 @@
 # Spec Técnica: [Fatia 01 - Envio seguro — dedupe durável, retry e reaper]
 
-> **Feature:** `escala-disparos` | **Status:** `PENDENTE` | **Data:** 2026-08-02
+> **Feature:** `escala-disparos` | **Status:** `CONCLUÍDO` | **Data:** 2026-08-02
 
 <!-- Arquivo: docs/specs/spec-escala-disparos-fatia-01.md -->
 
@@ -57,7 +57,7 @@
 - [ ] **Validação Estrita:** `tsc`, `worker:typecheck`, `lint` e `vitest run` verdes.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** migration 011 · `worker/src/db.ts` · dedupe em `/send` · reaper/retry em `process.ts` · testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** migration 011 · `worker/src/db.ts` (rest extraído + isJobSent/markJobSent) · dedupe durável em `/send` · reaper/retry/deduped em `process.ts` · 2 arquivos de teste (loop verde: tsc app+worker, lint, 171 testes)
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`

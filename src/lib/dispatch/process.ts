@@ -10,6 +10,39 @@ export type ProcessResult = {
   stoppedReason?: string;
 };
 
+const MAX_ATTEMPTS = 3;
+const REAP_AFTER_MS = 10 * 60 * 1000;
+
+/**
+ * Resgata jobs presos em `sending` (função morreu entre o claim e o update
+ * final). Com o dedupe durável no worker (wa_sent_jobs), reprocessar um job
+ * já entregue é inofensivo — o worker responde deduped.
+ */
+async function reapStuckJobs(
+  supabase: SupabaseClient,
+  now: Date,
+): Promise<void> {
+  const cutoff = new Date(now.getTime() - REAP_AFTER_MS).toISOString();
+  const { data: stuck } = await supabase
+    .from("dispatch_jobs")
+    .select("id, attempts")
+    .eq("status", "sending")
+    .or(`claimed_at.is.null,claimed_at.lt.${cutoff}`)
+    .limit(20);
+
+  for (const j of stuck ?? []) {
+    await supabase
+      .from("dispatch_jobs")
+      .update({
+        status: "queued",
+        attempts: (j.attempts ?? 0) + 1,
+        claimed_at: null,
+      })
+      .eq("id", j.id)
+      .eq("status", "sending");
+  }
+}
+
 async function loadSettings(supabase: SupabaseClient): Promise<RateSettings> {
   const { data } = await supabase
     .from("app_settings")
@@ -71,6 +104,8 @@ export async function processDispatchQueue(
     return result;
   }
 
+  await reapStuckJobs(supabase, now);
+
   const settings = await loadSettings(supabase);
   const dayStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
@@ -95,7 +130,7 @@ export async function processDispatchQueue(
     const { data: job, error } = await supabase
       .from("dispatch_jobs")
       .select(
-        "id, message_body, group_id, offer_id, wa_groups(jid, active)",
+        "id, message_body, group_id, offer_id, attempts, wa_groups(jid, active)",
       )
       .eq("status", "queued")
       .lte("scheduled_for", now.toISOString())
@@ -127,14 +162,14 @@ export async function processDispatchQueue(
     // claim atômico: só um cron vence se status ainda for queued
     const { data: claimed, error: claimErr } = await supabase
       .from("dispatch_jobs")
-      .update({ status: "sending" })
+      .update({ status: "sending", claimed_at: now.toISOString() })
       .eq("id", job.id)
       .eq("status", "queued")
       .select("id")
       .maybeSingle();
     if (claimErr || !claimed) continue;
 
-    const send = await workerFetch<{ ok: boolean }>("/send", {
+    const send = await workerFetch<{ ok: boolean; deduped?: boolean }>("/send", {
       method: "POST",
       body: JSON.stringify({
         jid: g.jid,
@@ -146,14 +181,34 @@ export async function processDispatchQueue(
     result.processed += 1;
 
     if (!send.ok) {
-      await supabase
-        .from("dispatch_jobs")
-        .update({
-          status: "failed",
-          error: send.error,
-        })
-        .eq("id", job.id);
-      result.failed += 1;
+      // Retry com backoff: falha transitória volta pra fila; só a
+      // MAX_ATTEMPTS-ésima falha é terminal.
+      const attempts = (job.attempts ?? 0) + 1;
+      if (attempts >= MAX_ATTEMPTS) {
+        await supabase
+          .from("dispatch_jobs")
+          .update({
+            status: "failed",
+            error: `${attempts} tentativas falharam: ${send.error}`,
+            attempts,
+            claimed_at: null,
+          })
+          .eq("id", job.id);
+        result.failed += 1;
+      } else {
+        await supabase
+          .from("dispatch_jobs")
+          .update({
+            status: "queued",
+            error: send.error,
+            attempts,
+            claimed_at: null,
+            scheduled_for: new Date(
+              now.getTime() + 2 ** attempts * 60_000,
+            ).toISOString(),
+          })
+          .eq("id", job.id);
+      }
       continue;
     }
 
@@ -173,9 +228,13 @@ export async function processDispatchQueue(
       .eq("id", job.offer_id);
 
     result.sent += 1;
-    daily += 1;
-    hourly += 1;
-    last = now;
+    if (!send.data.deduped) {
+      // deduped = entrega antiga resgatada; a mensagem já contou no rate
+      // quando foi de fato entregue.
+      daily += 1;
+      hourly += 1;
+      last = now;
+    }
   }
 
   return result;
