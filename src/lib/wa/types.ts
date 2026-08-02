@@ -10,7 +10,6 @@ export type WaGroupInput = {
   jid: string;
   name: string;
   active?: boolean;
-  daily_limit?: number | null;
   notes?: string | null;
 };
 

@@ -1,6 +1,6 @@
 # Spec Técnica: [Fatia 03 - Burst broadcast com jitter e teto de grupos]
 
-> **Feature:** `escala-disparos` | **Status:** `PENDENTE` | **Data:** 2026-08-02
+> **Feature:** `escala-disparos` | **Status:** `CONCLUÍDO` | **Data:** 2026-08-02
 
 <!-- Arquivo: docs/specs/spec-escala-disparos-fatia-03.md -->
 
@@ -51,7 +51,7 @@
 - [ ] **Validação Estrita:** `tsc`, `worker:typecheck`, `lint`, `vitest run` verdes; smoke de build confirma rotas de cron respondendo 202.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** migration 013 · loop burst+jitter · 202/after nas rotas cron · teto 15 grupos · limpeza daily_limit · testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** migration 013 · slot/burst com jitter injetável em `process.ts` · gate `daily_offer_cap` em `canSendNow` · 202/`after()` em cron dispatch/scrape/pipeline (keepalive síncrono: <30s e o status real interessa ao histórico do agendador) · teto 15 grupos (`activeLimitError`) · limpeza `daily_limit` (API+UI+types) · testes (188 verdes). Smoke de build 202 delegado ao `/sdd-validate` (escopo Feature).
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`

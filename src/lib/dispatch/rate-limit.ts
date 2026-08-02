@@ -17,6 +17,8 @@ export type RateSettings = {
 export type RateCounts = {
   daily: number;
   hourly: number;
+  /** Ofertas distintas já enviadas hoje (gate de ofertas/dia). */
+  dailyOffers?: number;
   lastSentAt: Date | null;
 };
 
@@ -106,6 +108,16 @@ export function canSendNow(
     return {
       ok: false,
       reason: `Teto horário (${settings.hourly_cap}) atingido`,
+    };
+  }
+  if (
+    settings.daily_offer_cap !== undefined &&
+    counts.dailyOffers !== undefined &&
+    counts.dailyOffers >= settings.daily_offer_cap
+  ) {
+    return {
+      ok: false,
+      reason: `Teto de ofertas por dia (${settings.daily_offer_cap}) atingido`,
     };
   }
   if (counts.lastSentAt) {

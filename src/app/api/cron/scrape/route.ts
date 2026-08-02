@@ -3,7 +3,7 @@ import { runScrape } from "@/lib/scrapers/run-pipeline";
 import { createSupabaseOfferStore } from "@/lib/scrapers/supabase-store";
 import type { ScrapeSource } from "@/lib/scrapers/types";
 import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 
 export const maxDuration = 120;
 
@@ -34,15 +34,19 @@ export async function GET(request: Request) {
     source = sourceParam as Exclude<ScrapeSource, "manual">;
   }
 
-  try {
-    const supabase = serviceClient();
-    const store = createSupabaseOfferStore(supabase);
-    const result = await runScrape(store, source);
-    return NextResponse.json(result);
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e) },
-      { status: 500 },
-    );
-  }
+  // 202 + after(): compatível com o timeout ~30s do cron-job.org free.
+  after(async () => {
+    try {
+      const supabase = serviceClient();
+      const store = createSupabaseOfferStore(supabase);
+      const result = await runScrape(store, source);
+      console.log("cron scrape:", JSON.stringify(result));
+    } catch (e) {
+      console.error(
+        "cron scrape falhou:",
+        e instanceof Error ? e.message : e,
+      );
+    }
+  });
+  return NextResponse.json({ accepted: true }, { status: 202 });
 }

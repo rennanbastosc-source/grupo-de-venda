@@ -1,5 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 vi.mock("@/lib/worker-client", () => ({
   workerFetch: vi.fn(),
@@ -7,73 +6,31 @@ vi.mock("@/lib/worker-client", () => ({
 
 import { workerFetch } from "@/lib/worker-client";
 import { processDispatchQueue } from "@/lib/dispatch/process";
-
-type Op = { method: string; args: unknown[] };
-type Handler = (table: string, ops: Op[]) => unknown;
-
-/** Fake supabase-js: grava a cadeia de chamadas e delega a resolução. */
-function makeSupabase(handler: Handler) {
-  return {
-    from(table: string) {
-      const ops: Op[] = [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const builder: any = {};
-      for (const m of [
-        "select",
-        "eq",
-        "or",
-        "lt",
-        "lte",
-        "gte",
-        "in",
-        "not",
-        "order",
-        "limit",
-        "update",
-        "insert",
-      ]) {
-        builder[m] = (...args: unknown[]) => {
-          ops.push({ method: m, args });
-          return builder;
-        };
-      }
-      builder.maybeSingle = async () => handler(table, ops);
-      builder.then = (
-        resolve: (v: unknown) => unknown,
-        reject: (e: unknown) => unknown,
-      ) => Promise.resolve(handler(table, ops)).then(resolve, reject);
-      return builder;
-    },
-  } as unknown as SupabaseClient;
-}
+import {
+  makeSupabase,
+  op,
+  updatePayload,
+  type Handler,
+  type Op,
+} from "./helpers/fake-supabase";
 
 const SETTINGS = {
   daily_cap: 35,
   hourly_cap: 10,
   min_interval_sec: 45,
+  daily_offer_cap: 10,
   sleep_start: null,
   sleep_end: null,
 };
 
-function op(ops: Op[], method: string): Op | undefined {
-  return ops.find((o) => o.method === method);
-}
-
-function updatePayload(ops: Op[]): Record<string, unknown> | null {
-  const u = op(ops, "update");
-  return u ? (u.args[0] as Record<string, unknown>) : null;
-}
-
 /**
  * Handler base do fluxo: reaper vazio, contadores zerados, um job na fila.
- * `overrides` intercepta antes do padrão.
  */
 function baseHandler(opts: {
   job?: Record<string, unknown> | null;
   stuck?: { id: string; attempts: number }[];
   updates: { table: string; payload: Record<string, unknown>; ops: Op[] }[];
 }): Handler {
-  let jobServed = false;
   return (table, ops) => {
     const upd = updatePayload(ops);
     if (upd) {
@@ -92,10 +49,15 @@ function baseHandler(opts: {
       }
       if (op(ops, "select")?.args[1]) return { count: 0 };
       if (sel === "sent_at") return { data: null, error: null };
+      if (sel === "offer_id") return { data: [], error: null };
+      if (sel === "id, offer_id") {
+        return {
+          data: opts.job ? { id: "j1", offer_id: "o1" } : null,
+          error: null,
+        };
+      }
       if (sel.startsWith("id, message_body")) {
-        if (jobServed) return { data: null, error: null };
-        jobServed = true;
-        return { data: opts.job ?? null, error: null };
+        return { data: opts.job ? [opts.job] : [], error: null };
       }
     }
     return { data: null, error: null };
@@ -216,7 +178,6 @@ describe("deduped do worker", () => {
         (u) => u.table === "offers" && u.payload.status === "sent",
       ),
     ).toBe(true);
-    // se tivesse contado no rate, o gate de min_interval pararia o loop
     expect(r.stoppedReason).toBeUndefined();
   });
 });
