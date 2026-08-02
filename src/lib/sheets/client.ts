@@ -56,7 +56,7 @@ function b64url(buf: Buffer | string): string {
 }
 
 /** JWT RS256 + exchange por access_token. */
-export async function getAccessToken(): Promise<string> {
+async function getAccessToken(): Promise<string> {
   const { email, key } = assertConfigured();
 
   const now = Math.floor(Date.now() / 1000);
