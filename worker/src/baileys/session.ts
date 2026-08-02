@@ -1,3 +1,5 @@
+import { hasSupabaseEnv, rest } from "../db.js";
+
 export type SessionStatus =
   | "disconnected"
   | "waiting_pairing"
@@ -46,6 +48,22 @@ export function getSessionState(now = Date.now()): SessionState {
   return snap;
 }
 
+/**
+ * Auditoria append-only: fire-and-forget — telemetria nunca pode derrubar
+ * a máquina de conexão (mesma filosofia do saveCreds().catch()).
+ */
+function logConnectionEvent(status: SessionStatus, detail: string | null) {
+  if (!hasSupabaseEnv()) return;
+  const url =
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  if (process.env.SCRAPE_MOCK === "1" || url.includes("ci.supabase.co")) {
+    return;
+  }
+  void rest("POST", "wa_connection_events", [{ status, detail }]).catch(
+    () => {},
+  );
+}
+
 export function setSessionStatus(
   status: SessionStatus,
   patch?: Partial<
@@ -60,6 +78,7 @@ export function setSessionStatus(
     >
   >,
 ) {
+  const changed = status !== state.status;
   state.status = status;
   if (patch?.qrDataUrl !== undefined) state.qrDataUrl = patch.qrDataUrl;
   if (patch?.qrAt !== undefined) state.qrAt = patch.qrAt;
@@ -78,6 +97,8 @@ export function setSessionStatus(
       state.pairingCodeAt = null;
     }
   }
+  // só transições reais viram evento (reconexão em loop não vira ruído)
+  if (changed) logConnectionEvent(status, state.lastError);
 }
 
 export function clearQr() {

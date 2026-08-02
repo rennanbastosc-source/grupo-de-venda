@@ -1,3 +1,4 @@
+import { ConnectionHistoryCard } from "@/components/ConnectionHistoryCard";
 import { SessionPanel } from "@/components/SessionPanel";
 import { SleepWindowCard } from "@/components/SleepWindowCard";
 
@@ -15,6 +16,7 @@ export default function BotPage() {
         </p>
       </div>
       <SessionPanel />
+      <ConnectionHistoryCard />
       <SleepWindowCard />
     </div>
   );

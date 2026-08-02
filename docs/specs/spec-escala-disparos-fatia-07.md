@@ -1,6 +1,6 @@
 # Spec Técnica: [Fatia 07 - Auditoria de conexão WA]
 
-> **Feature:** `escala-disparos` | **Status:** `PENDENTE` | **Data:** 2026-08-02
+> **Feature:** `escala-disparos` | **Status:** `CONCLUÍDO` | **Data:** 2026-08-02
 
 <!-- Arquivo: docs/specs/spec-escala-disparos-fatia-07.md -->
 
@@ -60,7 +60,7 @@
 - [ ] **Validação Estrita:** `tsc`, `worker:typecheck`, `lint`, `vitest run` verdes; grep confirma zero referências a `wa_session` (fora de migrations históricas).
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** migration 015 · hook em `setSessionStatus` · rota `/api/bot/events` · card no dashboard · testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** migration 015 (drop `wa_session` + `wa_connection_events` com RLS select) · hook `logConnectionEvent` em `setSessionStatus` (só transições reais; fire-and-forget; guardas env/ci) · `GET /api/bot/events` · card `ConnectionHistoryCard` em `/dashboard/bot` (componente próprio em vez da prop `showHistory` da spec — mesmo efeito, sem tocar no `SessionPanel` duplicado) · 9 testes novos (203 verdes, 2 voltas: lint `set-state-in-effect` corrigido com o idioma do repo)
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`
