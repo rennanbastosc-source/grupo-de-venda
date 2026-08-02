@@ -3,30 +3,13 @@ import { generateCaption } from "@/lib/ai/caption";
 import { emitAffiliateLink } from "@/lib/affiliates/emit";
 import { enqueueDispatch } from "@/lib/dispatch/enqueue";
 import { formatPriceCents } from "@/lib/dispatch/template";
-import {
-  appendRows,
-  isSheetsConfigured,
-  readRows,
-  updateRows,
-} from "@/lib/sheets/client";
+import { isSheetsConfigured, overwriteRows } from "@/lib/sheets/client";
 import type { PipelineResult } from "./types";
 
-const HEADER = [
-  "id",
-  "title",
-  "price",
-  "url",
-  "source",
-  "status",
-  "caption",
-  "caption_status",
-  "affiliate_url",
-  "sheets_synced_at",
-  "updated_at",
-  "notes",
-] as const;
+/** Espelho somente-leitura: id | link | caption | status */
+const MIRROR_HEADER = ["id", "link", "caption", "status"] as const;
+const MIRROR_LIMIT = 500;
 
-const BATCH = 10;
 // Teto duro por run: protege o 9router (30s/caption, sequencial).
 const MAX_BATCH = 25;
 
@@ -68,119 +51,8 @@ type OfferRow = {
   status: string;
   caption: string | null;
   caption_status: string;
-  sheets_row: number | null;
   updated_at: string;
 };
-
-function offerToSheetRow(
-  o: OfferRow,
-  affiliateUrl: string,
-  syncedAt: string,
-): string[] {
-  return [
-    o.id,
-    o.title,
-    formatPriceCents(o.price_cents),
-    o.url,
-    o.source,
-    o.status,
-    o.caption ?? "",
-    o.caption_status ?? "none",
-    affiliateUrl,
-    syncedAt,
-    o.updated_at,
-    "",
-  ];
-}
-
-async function affiliateUrlFor(
-  supabase: SupabaseClient,
-  offerId: string,
-): Promise<string> {
-  const { data } = await supabase
-    .from("affiliate_links")
-    .select("affiliate_url")
-    .eq("offer_id", offerId)
-    .eq("status", "ok")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data?.affiliate_url ?? "";
-}
-
-/** Exporta ofertas novas (sem sheets_row) para a planilha. */
-async function exportToSheets(
-  supabase: SupabaseClient,
-  result: PipelineResult,
-): Promise<void> {
-  if (!isSheetsConfigured()) return;
-
-  const { data: offers, error } = await supabase
-    .from("offers")
-    .select(
-      "id, title, price_cents, url, source, status, caption, caption_status, sheets_row, updated_at",
-    )
-    .is("sheets_row", null)
-    .in("status", ["new", "approved"])
-    .order("scraped_at", { ascending: true })
-    .limit(BATCH);
-
-  if (error) {
-    result.errors.push(`export: ${error.message}`);
-    return;
-  }
-  if (!offers?.length) return;
-
-  // Garante header se planilha vazia
-  try {
-    const existing = await readRows();
-    if (existing.length === 0) {
-      await appendRows([[...HEADER]]);
-    }
-  } catch (e) {
-    result.errors.push(
-      `export header: ${e instanceof Error ? e.message : String(e)}`,
-    );
-    return;
-  }
-
-  const rows: string[][] = [];
-  const now = new Date().toISOString();
-  for (const o of offers as OfferRow[]) {
-    const aff = await affiliateUrlFor(supabase, o.id);
-    rows.push(offerToSheetRow(o, aff, now));
-  }
-
-  try {
-    const { startRow } = await appendRows(rows);
-    if (startRow == null) {
-      result.errors.push("export: append sem startRow");
-      return;
-    }
-    for (let i = 0; i < offers.length; i++) {
-      const o = offers[i] as OfferRow;
-      const row = startRow + i;
-      const { error: uerr } = await supabase
-        .from("offers")
-        .update({
-          sheets_row: row,
-          sheets_synced_at: now,
-          caption_status:
-            o.caption_status === "none" || !o.caption_status
-              ? "pending"
-              : o.caption_status,
-          updated_at: now,
-        })
-        .eq("id", o.id);
-      if (uerr) result.errors.push(`export db ${o.id}: ${uerr.message}`);
-      else result.exported += 1;
-    }
-  } catch (e) {
-    result.errors.push(
-      `export: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
-}
 
 /** Gera legendas via 9router para caption_status pending|none. */
 async function generateCaptions(
@@ -191,7 +63,7 @@ async function generateCaptions(
   const { data: offers, error } = await supabase
     .from("offers")
     .select(
-      "id, title, price_cents, url, source, status, caption, caption_status, sheets_row, updated_at",
+      "id, title, price_cents, url, source, status, caption, caption_status, updated_at",
     )
     .in("caption_status", ["pending", "none"])
     .in("status", ["new", "approved"])
@@ -225,28 +97,6 @@ async function generateCaptions(
         continue;
       }
       result.captioned += 1;
-
-      // write-back Sheets se tiver linha
-      if (isSheetsConfigured() && o.sheets_row) {
-        try {
-          const aff = await affiliateUrlFor(supabase, o.id);
-          await updateRows(o.sheets_row, [
-            offerToSheetRow(
-              { ...o, caption, caption_status: "ready", updated_at: now },
-              aff,
-              now,
-            ),
-          ]);
-          await supabase
-            .from("offers")
-            .update({ sheets_synced_at: now })
-            .eq("id", o.id);
-        } catch (e) {
-          result.errors.push(
-            `caption sheets ${o.id}: ${e instanceof Error ? e.message : String(e)}`,
-          );
-        }
-      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       result.errors.push(`caption ${o.id}: ${msg}`);
@@ -258,107 +108,6 @@ async function generateCaptions(
         })
         .eq("id", o.id);
     }
-  }
-}
-
-/**
- * Lê planilha e aplica edições humanas (caption/status) se mais novas.
- * Colunas: 0=id 5=status 6=caption 7=caption_status
- */
-async function importFromSheets(
-  supabase: SupabaseClient,
-  result: PipelineResult,
-): Promise<void> {
-  if (!isSheetsConfigured()) return;
-
-  let values: string[][];
-  try {
-    values = await readRows();
-  } catch (e) {
-    result.errors.push(
-      `import: ${e instanceof Error ? e.message : String(e)}`,
-    );
-    return;
-  }
-  if (values.length <= 1) return;
-
-  // status atual no DB: planilha é espelho (status fica stale após envio)
-  // e não deve rebaixar oferta já "sent" nem sobrescrever caption recém-gerada.
-  const sheetIds: string[] = [];
-  for (let i = 1; i < values.length; i++) {
-    const id = values[i]?.[0]?.trim();
-    if (id) sheetIds.push(id);
-  }
-  const { data: currentRows, error: currentErr } = await supabase
-    .from("offers")
-    .select("id, status, caption_status")
-    .in("id", sheetIds);
-  if (currentErr) {
-    result.errors.push(`import current: ${currentErr.message}`);
-    return;
-  }
-  const current = new Map(
-    (currentRows ?? []).map((o) => [o.id as string, o as { status: string; caption_status: string }]),
-  );
-
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i] ?? [];
-    const id = row[0]?.trim();
-    if (!id) continue;
-
-    const status = row[5]?.trim();
-    const caption = row[6]?.trim() ?? "";
-    const captionStatus = row[7]?.trim();
-    const cur = current.get(id);
-
-    // values[0] = header (sheet row 1); values[i] = sheet row i+1
-    const patch: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-      sheets_row: i + 1,
-    };
-
-    if (caption && cur?.caption_status !== "ready") {
-      patch.caption = caption;
-      if (
-        captionStatus === "ready" ||
-        captionStatus === "pending" ||
-        captionStatus === "failed" ||
-        captionStatus === "none"
-      ) {
-        patch.caption_status = captionStatus;
-      } else {
-        patch.caption_status = "ready";
-      }
-    } else if (
-      captionStatus === "ready" ||
-      captionStatus === "pending" ||
-      captionStatus === "failed" ||
-      captionStatus === "none"
-    ) {
-      patch.caption_status = captionStatus;
-    }
-
-    if (
-      status === "new" ||
-      status === "approved" ||
-      status === "rejected" ||
-      status === "sent"
-    ) {
-      // não rebaixar oferta já enviada (sheet tem status stale)
-      if (status !== "sent" && cur?.status !== "sent") patch.status = status;
-    }
-
-    const { error, data } = await supabase
-      .from("offers")
-      .update(patch)
-      .eq("id", id)
-      .select("id")
-      .maybeSingle();
-    if (error) {
-      result.errors.push(`import ${id}: ${error.message}`);
-      continue;
-    }
-    if (data) result.imported += 1;
   }
 }
 
@@ -493,28 +242,85 @@ async function autoEnqueue(
 }
 
 /**
- * Orquestra: export Sheets → captions → import Sheets → affiliate → auto-enqueue.
- * DB canônico. Sheets espelho + revisão.
+ * Espelho somente-leitura: reescreve a aba inteira (header + ofertas com
+ * caption pronta ou já enviadas). Mão única — nada volta da planilha.
+ */
+export async function mirrorToSheets(
+  supabase: SupabaseClient,
+  result: PipelineResult,
+): Promise<void> {
+  if (!isSheetsConfigured()) return;
+
+  const { data: offers, error } = await supabase
+    .from("offers")
+    .select("id, status, caption, caption_status")
+    .or("caption_status.eq.ready,status.eq.sent")
+    .order("scraped_at", { ascending: false })
+    .limit(MIRROR_LIMIT);
+
+  if (error) {
+    result.errors.push(`mirror: ${error.message}`);
+    return;
+  }
+  if (!offers?.length) return;
+
+  const { data: links } = await supabase
+    .from("affiliate_links")
+    .select("offer_id, affiliate_url")
+    .in(
+      "offer_id",
+      offers.map((o) => o.id),
+    )
+    .eq("status", "ok")
+    .order("created_at", { ascending: false });
+  const linkByOffer = new Map<string, string>();
+  for (const l of links ?? []) {
+    if (!linkByOffer.has(l.offer_id as string)) {
+      linkByOffer.set(l.offer_id as string, l.affiliate_url as string);
+    }
+  }
+
+  const rows: string[][] = [[...MIRROR_HEADER]];
+  for (const o of offers) {
+    rows.push([
+      o.id as string,
+      linkByOffer.get(o.id as string) ?? "",
+      (o.caption as string | null) ?? "",
+      o.status === "sent" ? "enviado" : "pendente",
+    ]);
+  }
+
+  try {
+    await overwriteRows(rows);
+    result.mirrored = rows.length - 1;
+  } catch (e) {
+    result.errors.push(
+      `mirror: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+}
+
+/**
+ * Orquestra: captions → affiliate → auto-enqueue → espelho Sheets.
+ * DB canônico; a planilha é espelho read-only (reescrita completa).
  */
 export async function runOfferPipeline(
   supabase: SupabaseClient,
 ): Promise<PipelineResult> {
   const result: PipelineResult = {
-    exported: 0,
     captioned: 0,
-    imported: 0,
     affiliates: 0,
     enqueued: 0,
+    mirrored: 0,
     errors: [],
   };
 
   const cfg = await loadPipelineSettings(supabase);
 
-  await exportToSheets(supabase, result);
   await generateCaptions(supabase, result, cfg.batch);
-  await importFromSheets(supabase, result);
   await ensureAffiliates(supabase, result, cfg);
   await autoEnqueue(supabase, result, cfg);
+  await mirrorToSheets(supabase, result);
 
   return result;
 }

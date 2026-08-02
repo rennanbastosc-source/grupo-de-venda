@@ -1,6 +1,6 @@
 # Spec Técnica: [Fatia 06 - Planilha espelho somente-leitura]
 
-> **Feature:** `escala-disparos` | **Status:** `PENDENTE` | **Data:** 2026-08-02
+> **Feature:** `escala-disparos` | **Status:** `CONCLUÍDO` | **Data:** 2026-08-02
 
 <!-- Arquivo: docs/specs/spec-escala-disparos-fatia-06.md -->
 
@@ -46,7 +46,7 @@
 - [ ] **Validação Estrita:** `tsc`, `lint`, `vitest run` verdes; grep confirma zero referências restantes a `sheets_row`/`importFromSheets`.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** migration 014 · `mirrorToSheets` + `overwriteRows` · remoção import/export antigos · testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** migration 014 (drop `sheets_row`/`sheets_synced_at`) · `overwriteRows` (PUT A1:D + clear do excedente) · `mirrorToSheets` como fase final · `exportToSheets`/`importFromSheets`/write-back/`appendRows`/`readRows`/`updateRows` removidos · `PipelineResult` com `mirrored` · `import-guard.test.ts` removido, `sheets-mirror.test.ts` criado (194 verdes). Gatilho de caption: confirmado já interno (`generateCaptions` cobre `none`), sem substituto necessário.
+- **Pendente:** — (proteção de intervalo da planilha é operação no Google, registrada no runbook)
 - **Próximo comando:** `/sdd-implement`

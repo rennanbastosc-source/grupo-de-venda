@@ -128,7 +128,6 @@ function offerRow(i: number): Row {
     status: "new",
     caption: null,
     caption_status: "none",
-    sheets_row: null,
     updated_at: new Date().toISOString(),
     scraped_at: new Date().toISOString(),
   };

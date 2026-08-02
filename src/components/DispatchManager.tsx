@@ -298,7 +298,7 @@ export function DispatchManager() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Pipeline falhou");
       setPipelineMsg(
-        `export ${data.exported ?? 0} · caption ${data.captioned ?? 0} · import ${data.imported ?? 0} · afiliado ${data.affiliates ?? 0} · fila ${data.enqueued ?? 0}` +
+        `caption ${data.captioned ?? 0} · afiliado ${data.affiliates ?? 0} · fila ${data.enqueued ?? 0} · espelho ${data.mirrored ?? 0}` +
           (data.errors?.length ? ` · erros: ${data.errors.join("; ")}` : ""),
       );
       await load();
