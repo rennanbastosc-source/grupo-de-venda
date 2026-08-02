@@ -1,6 +1,6 @@
 # Spec Técnica: [Fatia 04 - Migração dos crons para cron-job.org]
 
-> **Feature:** `escala-disparos` | **Status:** `PENDENTE` | **Data:** 2026-08-02
+> **Feature:** `escala-disparos` | **Status:** `CONCLUÍDO` | **Data:** 2026-08-02
 
 <!-- Arquivo: docs/specs/spec-escala-disparos-fatia-04.md -->
 
@@ -38,7 +38,7 @@
 - [ ] **Validação Estrita:** `tsc`, `lint`, `vitest run` verdes (inalterados por esta fatia).
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** runbook · jobs externos criados · verificação Fluid · commit `vercel.json`
+- **Status:** `CONCLUÍDO`
+- **Concluído:** runbook `docs/runbooks/crons-externos.md` (4 jobs, headers, agendas em Fortaleza, checklist de transição, plano B) · `vercel.json` sem `crons`
+- **Pendente (operacional, fora do código):** criação dos jobs no painel do cron-job.org, verificação do Fluid Compute e convivência de 2 dias — itens do checklist do runbook, executados pelo admin antes do downgrade.
 - **Próximo comando:** `/sdd-implement`
