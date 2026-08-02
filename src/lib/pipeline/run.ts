@@ -371,21 +371,25 @@ async function ensureAffiliates(
   if (!offers?.length) return;
 
   for (const o of offers) {
-    const { data: link } = await supabase
-      .from("affiliate_links")
-      .select("id")
-      .eq("offer_id", o.id)
-      .eq("status", "ok")
-      .limit(1)
-      .maybeSingle();
-    if (link) continue;
-
     // mercadolivre → provider ML (link curto meli.la); demais sources →
     // generic-tag. Fallback para o default se o slug não existir.
     const providerId =
       o.source === "mercadolivre"
         ? (providerBySlug.get("mercadolivre") ?? defaultProviderId)
         : (providerBySlug.get("generic-tag") ?? defaultProviderId);
+
+    // Skip só se já existe link ok DO provider que seria usado — link ok de
+    // outro provider (ex: generic-tag em oferta ML pré-meli.la) não bloqueia
+    // regeneração. Evita oferta ML presa em URL longa pra sempre.
+    const { data: link } = await supabase
+      .from("affiliate_links")
+      .select("id")
+      .eq("offer_id", o.id)
+      .eq("status", "ok")
+      .eq("provider_id", providerId)
+      .limit(1)
+      .maybeSingle();
+    if (link) continue;
 
     const emitted = await emitAffiliateLink(supabase, {
       offerId: o.id,
