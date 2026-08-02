@@ -17,6 +17,7 @@ type Settings = {
   daily_cap: number;
   hourly_cap: number;
   min_interval_sec: number;
+  daily_offer_cap: number;
   message_template: string;
   auto_dispatch_enabled: boolean;
   auto_dispatch_group_ids: string[];
@@ -55,6 +56,7 @@ export function DispatchManager() {
   const [dailyCap, setDailyCap] = useState("35");
   const [hourlyCap, setHourlyCap] = useState("10");
   const [intervalSec, setIntervalSec] = useState("45");
+  const [offerCap, setOfferCap] = useState("10");
   const [messageTemplate, setMessageTemplate] = useState("");
   const [autoEnabled, setAutoEnabled] = useState(false);
   const [autoGroupIds, setAutoGroupIds] = useState<string[]>([]);
@@ -95,6 +97,7 @@ export function DispatchManager() {
         setDailyCap(String(s.daily_cap));
         setHourlyCap(String(s.hourly_cap));
         setIntervalSec(String(s.min_interval_sec));
+        setOfferCap(String(s.daily_offer_cap ?? 10));
         setMessageTemplate(s.message_template ?? "");
         setAutoEnabled(!!s.auto_dispatch_enabled);
         setAutoGroupIds(s.auto_dispatch_group_ids ?? []);
@@ -137,6 +140,7 @@ export function DispatchManager() {
       setDailyCap(String(s.daily_cap));
       setHourlyCap(String(s.hourly_cap));
       setIntervalSec(String(s.min_interval_sec));
+      setOfferCap(String(s.daily_offer_cap ?? 10));
       setMessageTemplate(s.message_template ?? "");
       setAutoEnabled(!!s.auto_dispatch_enabled);
       setAutoGroupIds(s.auto_dispatch_group_ids ?? []);
@@ -221,6 +225,7 @@ export function DispatchManager() {
           daily_cap: Number(dailyCap),
           hourly_cap: Number(hourlyCap),
           min_interval_sec: Number(intervalSec),
+          daily_offer_cap: Number(offerCap),
           message_template: messageTemplate,
           auto_dispatch_enabled: autoEnabled,
           auto_dispatch_group_ids: autoGroupIds,
@@ -293,7 +298,7 @@ export function DispatchManager() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Pipeline falhou");
       setPipelineMsg(
-        `export ${data.exported ?? 0} · caption ${data.captioned ?? 0} · import ${data.imported ?? 0} · afiliado ${data.affiliates ?? 0} · fila ${data.enqueued ?? 0}` +
+        `caption ${data.captioned ?? 0} · afiliado ${data.affiliates ?? 0} · fila ${data.enqueued ?? 0} · espelho ${data.mirrored ?? 0}` +
           (data.errors?.length ? ` · erros: ${data.errors.join("; ")}` : ""),
       );
       await load();
@@ -515,17 +520,28 @@ export function DispatchManager() {
       {/* 3. Configuração */}
       <form
         onSubmit={saveSettings}
-        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-3"
+        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-4"
       >
-        <h2 className="text-sm font-black uppercase tracking-tight text-ink sm:col-span-3">
+        <h2 className="text-sm font-black uppercase tracking-tight text-ink sm:col-span-4">
           Rate limit
           {settings ? (
             <span className="ml-2 font-normal text-muted">
-              (atual: {settings.daily_cap}/dia · {settings.hourly_cap}/h ·{" "}
-              {settings.min_interval_sec}s)
+              (atual: {settings.daily_offer_cap ?? 10} ofertas/dia ·{" "}
+              {settings.daily_cap} msgs/dia · {settings.hourly_cap}/h ·{" "}
+              {settings.min_interval_sec}s · horários em America/Fortaleza)
             </span>
           ) : null}
         </h2>
+        <label className="block text-sm">
+          <span className="b-label">Ofertas/dia</span>
+          <input
+            type="number"
+            min={1}
+            value={offerCap}
+            onChange={(e) => setOfferCap(e.target.value)}
+            className="b-input"
+          />
+        </label>
         <label className="block text-sm">
           <span className="b-label">Daily cap</span>
           <input

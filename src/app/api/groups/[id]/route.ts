@@ -1,5 +1,10 @@
 import { requireUser } from "@/lib/api-auth";
-import { assertJidUnique, normalizeJid, validateGroupInput } from "@/lib/wa/groups";
+import {
+  activeLimitError,
+  assertJidUnique,
+  normalizeJid,
+  validateGroupInput,
+} from "@/lib/wa/groups";
 import { NextResponse } from "next/server";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -35,17 +40,15 @@ export async function PATCH(request: Request, ctx: Ctx) {
     patch.jid = normalizeJid(body.jid);
   }
   if (body.active !== undefined) patch.active = Boolean(body.active);
-  if (body.daily_limit !== undefined) {
-    if (body.daily_limit === null) patch.daily_limit = null;
-    else {
-      const n = Number(body.daily_limit);
-      if (!Number.isInteger(n) || n < 1) {
-        return NextResponse.json(
-          { error: "daily_limit deve ser inteiro >= 1" },
-          { status: 400 },
-        );
-      }
-      patch.daily_limit = n;
+  if (patch.active === true) {
+    const { data: actives } = await auth.supabase
+      .from("wa_groups")
+      .select("id")
+      .eq("active", true)
+      .neq("id", id);
+    const limit = activeLimitError((actives ?? []).length);
+    if (limit) {
+      return NextResponse.json({ error: limit }, { status: 409 });
     }
   }
   if (body.notes !== undefined) patch.notes = body.notes;

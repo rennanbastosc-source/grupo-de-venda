@@ -12,6 +12,7 @@ import {
   startBaileys,
 } from "../baileys/client.js";
 import { normalizePhone } from "../baileys/phone.js";
+import { hasSupabaseEnv, isJobSent, markJobSent } from "../db.js";
 
 function json(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "content-type": "application/json" });
@@ -133,8 +134,28 @@ export function createWorkerServer() {
       if (!jid || !text) {
         return json(res, 400, { error: "jid e text obrigatórios" });
       }
-      if (body.jobId && sentJobIds.has(body.jobId)) {
-        return json(res, 200, { ok: true, jobId: body.jobId, deduped: true });
+      if (body.jobId) {
+        if (sentJobIds.has(body.jobId)) {
+          return json(res, 200, { ok: true, jobId: body.jobId, deduped: true });
+        }
+        // Dedupe durável: na dúvida (consulta falhou), NÃO envia — o retry
+        // do app cobre; enviar às cegas é o único caminho para duplicar.
+        if (hasSupabaseEnv()) {
+          try {
+            if (await isJobSent(body.jobId)) {
+              sentJobIds.add(body.jobId);
+              return json(res, 200, {
+                ok: true,
+                jobId: body.jobId,
+                deduped: true,
+              });
+            }
+          } catch (e) {
+            return json(res, 500, {
+              error: `dedupe check falhou: ${e instanceof Error ? e.message : String(e)}`,
+            });
+          }
+        }
       }
       const socket = getSocket();
       if (!socket) {
@@ -142,7 +163,12 @@ export function createWorkerServer() {
       }
       try {
         await socket.sendMessage(jid, { text });
-        if (body.jobId) sentJobIds.add(body.jobId);
+        if (body.jobId) {
+          sentJobIds.add(body.jobId);
+          // Best-effort: a mensagem já saiu; falhar aqui não pode virar 500
+          // (o app marcaria failed e o retry duplicaria). Set cobre até restart.
+          if (hasSupabaseEnv()) await markJobSent(body.jobId).catch(() => {});
+        }
         return json(res, 200, { ok: true, jobId: body.jobId });
       } catch (e) {
         return json(res, 500, {

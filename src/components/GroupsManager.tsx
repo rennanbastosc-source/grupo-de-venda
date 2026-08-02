@@ -7,7 +7,6 @@ type Group = {
   jid: string;
   name: string;
   active: boolean;
-  daily_limit: number | null;
   notes: string | null;
 };
 
@@ -17,7 +16,6 @@ export function GroupsManager() {
   const [error, setError] = useState<string | null>(null);
   const [jid, setJid] = useState("");
   const [name, setName] = useState("");
-  const [dailyLimit, setDailyLimit] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -50,17 +48,12 @@ export function GroupsManager() {
       const res = await fetch("/api/groups", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jid,
-          name,
-          daily_limit: dailyLimit ? Number(dailyLimit) : null,
-        }),
+        body: JSON.stringify({ jid, name }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha ao criar");
       setJid("");
       setName("");
-      setDailyLimit("");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha");
@@ -111,16 +104,6 @@ export function GroupsManager() {
             className="b-input font-mono text-xs"
           />
         </label>
-        <label className="block text-sm">
-          <span className="b-label">Limite diário (opcional)</span>
-          <input
-            type="number"
-            min={1}
-            value={dailyLimit}
-            onChange={(e) => setDailyLimit(e.target.value)}
-            className="b-input"
-          />
-        </label>
         <div className="flex items-end">
           <button
             type="submit"
@@ -150,7 +133,6 @@ export function GroupsManager() {
                 <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Nome</th>
                 <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">JID</th>
                 <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Ativo</th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Limite</th>
                 <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
@@ -160,7 +142,6 @@ export function GroupsManager() {
                   <td className="px-3 py-2">{g.name}</td>
                   <td className="px-3 py-2 font-mono text-xs">{g.jid}</td>
                   <td className="px-3 py-2">{g.active ? "sim" : "não"}</td>
-                  <td className="px-3 py-2">{g.daily_limit ?? "—"}</td>
                   <td className="px-3 py-2 space-x-2">
                     <button
                       type="button"

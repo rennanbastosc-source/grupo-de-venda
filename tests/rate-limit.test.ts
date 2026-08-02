@@ -122,6 +122,37 @@ describe("canSendNow", () => {
     );
     expect(r.ok).toBe(true);
   });
+
+  // Janela operacional default da feature escala-disparos (Fortaleza UTC-3)
+  const OPS = { ...settings, sleep_start: "23:01", sleep_end: "06:59" };
+
+  it("bloqueia às 23:30 de Fortaleza", () => {
+    // 2026-08-03T02:30:00Z = 2026-08-02 23:30 em Fortaleza
+    expect(canSendNow(under, OPS, new Date("2026-08-03T02:30:00Z")).ok).toBe(
+      false,
+    );
+  });
+
+  it("bloqueia às 06:30 de Fortaleza", () => {
+    // 2026-08-02T09:30:00Z = 06:30 em Fortaleza
+    expect(canSendNow(under, OPS, new Date("2026-08-02T09:30:00Z")).ok).toBe(
+      false,
+    );
+  });
+
+  it("libera às 07:00 de Fortaleza", () => {
+    // 2026-08-02T10:00:00Z = 07:00 em Fortaleza
+    expect(canSendNow(under, OPS, new Date("2026-08-02T10:00:00Z")).ok).toBe(
+      true,
+    );
+  });
+
+  it("libera às 23:00 de Fortaleza (último slot do dia)", () => {
+    // 2026-08-03T02:00:00Z = 2026-08-02 23:00 em Fortaleza
+    expect(canSendNow(under, OPS, new Date("2026-08-03T02:00:00Z")).ok).toBe(
+      true,
+    );
+  });
 });
 
 describe("isWithinSleepWindow", () => {

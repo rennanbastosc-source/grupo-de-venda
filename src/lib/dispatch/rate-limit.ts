@@ -1,7 +1,15 @@
+/**
+ * Fuso único de todo o calendário do dispatch (janela de silêncio, virada
+ * de dia dos contadores, unicidade diária). Fortaleza é UTC-3 fixo — o
+ * Brasil aboliu o horário de verão em 2019.
+ */
+export const DISPATCH_TZ = "America/Fortaleza";
+
 export type RateSettings = {
   daily_cap: number;
   hourly_cap: number;
   min_interval_sec: number;
+  daily_offer_cap?: number;
   sleep_start?: string | null;
   sleep_end?: string | null;
 };
@@ -9,6 +17,8 @@ export type RateSettings = {
 export type RateCounts = {
   daily: number;
   hourly: number;
+  /** Ofertas distintas já enviadas hoje (gate de ofertas/dia). */
+  dailyOffers?: number;
   lastSentAt: Date | null;
 };
 
@@ -25,10 +35,10 @@ function parseHhMm(value: string | null | undefined): number | null {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
-/** Minutos desde meia-noite em America/Sao_Paulo. */
-function localMinutesSp(now: Date): number {
+/** Minutos desde meia-noite em DISPATCH_TZ. */
+function localMinutes(now: Date): number {
   const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Sao_Paulo",
+    timeZone: DISPATCH_TZ,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -41,8 +51,24 @@ function localMinutesSp(now: Date): number {
 }
 
 /**
+ * Meia-noite de "hoje" em DISPATCH_TZ, como instante UTC. Única fonte de
+ * virada de dia do domínio dispatch.
+ */
+export function dayStartInTz(now: Date): Date {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DISPATCH_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  // ponytail: offset -03:00 hardcoded — Fortaleza não tem DST; se um dia
+  // DISPATCH_TZ mudar para zona com DST, derive o offset via Intl.
+  return new Date(`${ymd}T00:00:00-03:00`);
+}
+
+/**
  * true se `now` (qualquer fuso) cai dentro da janela de descanso
- * configurada em horário local de São Paulo.
+ * configurada em horário local de DISPATCH_TZ.
  */
 export function isWithinSleepWindow(
   now: Date,
@@ -53,7 +79,7 @@ export function isWithinSleepWindow(
   if (start === null || end === null) return false;
   if (start === end) return false;
 
-  const cur = localMinutesSp(now);
+  const cur = localMinutes(now);
   if (start < end) {
     // ex: 08:00–18:00
     return cur >= start && cur < end;
@@ -82,6 +108,16 @@ export function canSendNow(
     return {
       ok: false,
       reason: `Teto horário (${settings.hourly_cap}) atingido`,
+    };
+  }
+  if (
+    settings.daily_offer_cap !== undefined &&
+    counts.dailyOffers !== undefined &&
+    counts.dailyOffers >= settings.daily_offer_cap
+  ) {
+    return {
+      ok: false,
+      reason: `Teto de ofertas por dia (${settings.daily_offer_cap}) atingido`,
     };
   }
   if (counts.lastSentAt) {

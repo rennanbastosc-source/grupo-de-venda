@@ -2,6 +2,16 @@ import type { WaGroupInput } from "./types";
 
 const JID_RE = /^[\w.-]+@(g\.us|s\.whatsapp\.net)$/i;
 
+/** Teto de grupos ativos por número de WhatsApp (grupos espelhados). */
+export const MAX_ACTIVE_GROUPS = 15;
+
+/** Mensagem de erro se ativar mais um grupo estourar o teto; null se cabe. */
+export function activeLimitError(activeCount: number): string | null {
+  return activeCount >= MAX_ACTIVE_GROUPS
+    ? `Limite de ${MAX_ACTIVE_GROUPS} grupos ativos atingido`
+    : null;
+}
+
 export function normalizeJid(jid: string): string {
   return jid.trim().toLowerCase();
 }
@@ -10,7 +20,6 @@ export function validateGroupInput(input: {
   jid?: unknown;
   name?: unknown;
   active?: unknown;
-  daily_limit?: unknown;
   notes?: unknown;
 }): { ok: true; value: WaGroupInput } | { ok: false; error: string } {
   if (typeof input.jid !== "string" || !input.jid.trim()) {
@@ -23,16 +32,6 @@ export function validateGroupInput(input: {
   if (typeof input.name !== "string" || !input.name.trim()) {
     return { ok: false, error: "name obrigatório" };
   }
-  let daily_limit: number | null | undefined = undefined;
-  if (input.daily_limit !== undefined && input.daily_limit !== null) {
-    const n = Number(input.daily_limit);
-    if (!Number.isInteger(n) || n < 1) {
-      return { ok: false, error: "daily_limit deve ser inteiro >= 1" };
-    }
-    daily_limit = n;
-  } else if (input.daily_limit === null) {
-    daily_limit = null;
-  }
 
   return {
     ok: true,
@@ -40,7 +39,6 @@ export function validateGroupInput(input: {
       jid,
       name: input.name.trim(),
       active: input.active === undefined ? true : Boolean(input.active),
-      daily_limit,
       notes:
         input.notes === undefined || input.notes === null
           ? null

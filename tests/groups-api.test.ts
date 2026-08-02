@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeLimitError,
   assertJidUnique,
+  MAX_ACTIVE_GROUPS,
   normalizeJid,
   validateGroupInput,
 } from "@/lib/wa/groups";
@@ -10,13 +12,23 @@ describe("validateGroupInput", () => {
     const r = validateGroupInput({
       jid: "120363ABC@g.us",
       name: " Promo ",
-      daily_limit: 10,
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.value.jid).toBe("120363abc@g.us");
       expect(r.value.name).toBe("Promo");
-      expect(r.value.daily_limit).toBe(10);
+    }
+  });
+
+  it("ignora daily_limit legado sem erro", () => {
+    const r = validateGroupInput({
+      jid: "1@g.us",
+      name: "x",
+      daily_limit: 10,
+    } as Parameters<typeof validateGroupInput>[0]);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect("daily_limit" in r.value).toBe(false);
     }
   });
 
@@ -50,5 +62,16 @@ describe("assertJidUnique", () => {
 describe("normalizeJid", () => {
   it("lowercases", () => {
     expect(normalizeJid(" X@G.US ")).toBe("x@g.us");
+  });
+});
+
+describe("activeLimitError (teto de grupos ativos)", () => {
+  it("permite até o teto", () => {
+    expect(activeLimitError(MAX_ACTIVE_GROUPS - 1)).toBeNull();
+  });
+
+  it("bloqueia o 16º ativo com mensagem legível", () => {
+    const err = activeLimitError(MAX_ACTIVE_GROUPS);
+    expect(err).toMatch(/15 grupos ativos/);
   });
 });

@@ -3,8 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = Record<string, unknown>;
 
-function makeClient(offers: Row[]) {
+function makeClient(offers: Row[], settings: Row = {}) {
   const store = offers;
+  const stats = { settingsReads: 0 };
 
   const filterRows = (
     rows: Row[],
@@ -50,11 +51,13 @@ function makeClient(offers: Row[]) {
     };
     chain.maybeSingle = async () => {
       if (table === "app_settings") {
+        stats.settingsReads += 1;
         return {
           data: {
             auto_dispatch_enabled: false,
             auto_dispatch_group_ids: [],
             default_affiliate_provider_id: null,
+            ...settings,
           },
           error: null,
         };
@@ -108,7 +111,26 @@ function makeClient(offers: Row[]) {
     return chain;
   };
 
-  return { from } as unknown as SupabaseClient;
+  return {
+    client: { from } as unknown as SupabaseClient,
+    stats,
+  };
+}
+
+function offerRow(i: number): Row {
+  const hex = i.toString(16).padStart(2, "0");
+  return {
+    id: `11111111-1111-4111-8111-1111111111${hex}`,
+    title: `Oferta ${i}`,
+    price_cents: 1000 + i,
+    url: `https://ex.com/p/${i}`,
+    source: "mercadolivre",
+    status: "new",
+    caption: null,
+    caption_status: "none",
+    updated_at: new Date().toISOString(),
+    scraped_at: new Date().toISOString(),
+  };
 }
 
 describe("runOfferPipeline", () => {
@@ -119,20 +141,8 @@ describe("runOfferPipeline", () => {
 
   it("sem Sheets: gera caption mock e marca ready", async () => {
     vi.stubEnv("SCRAPE_MOCK", "1");
-    const offer: Row = {
-      id: "11111111-1111-4111-8111-111111111111",
-      title: "Fone X",
-      price_cents: 1000,
-      url: "https://ex.com/x",
-      source: "mercadolivre",
-      status: "new",
-      caption: null,
-      caption_status: "none",
-      sheets_row: null,
-      updated_at: new Date().toISOString(),
-      scraped_at: new Date().toISOString(),
-    };
-    const client = makeClient([offer]);
+    const offer: Row = { ...offerRow(1), title: "Fone X" };
+    const { client } = makeClient([offer]);
     const { runOfferPipeline } = await import("@/lib/pipeline/run");
     const result = await runOfferPipeline(client);
 
@@ -140,5 +150,42 @@ describe("runOfferPipeline", () => {
     expect(offer.caption_status).toBe("ready");
     expect(String(offer.caption)).toContain("Fone X");
     expect(String(offer.caption)).not.toContain("http");
+  });
+
+  it("batch de caption segue daily_offer_cap", async () => {
+    vi.stubEnv("SCRAPE_MOCK", "1");
+    const offers = Array.from({ length: 15 }, (_, i) => offerRow(i));
+    const { client } = makeClient(offers, { daily_offer_cap: 12 });
+    const { runOfferPipeline } = await import("@/lib/pipeline/run");
+    const result = await runOfferPipeline(client);
+    expect(result.captioned).toBe(12);
+  });
+
+  it("cap ausente usa default 10", async () => {
+    vi.stubEnv("SCRAPE_MOCK", "1");
+    const offers = Array.from({ length: 15 }, (_, i) => offerRow(i));
+    const { client } = makeClient(offers);
+    const { runOfferPipeline } = await import("@/lib/pipeline/run");
+    const result = await runOfferPipeline(client);
+    expect(result.captioned).toBe(10);
+  });
+
+  it("teto duro de 25 por run protege o 9router", async () => {
+    vi.stubEnv("SCRAPE_MOCK", "1");
+    const offers = Array.from({ length: 30 }, (_, i) => offerRow(i));
+    const { client } = makeClient(offers, { daily_offer_cap: 100 });
+    const { runOfferPipeline } = await import("@/lib/pipeline/run");
+    const result = await runOfferPipeline(client);
+    expect(result.captioned).toBe(25);
+  });
+
+  it("app_settings é lido uma única vez por run", async () => {
+    vi.stubEnv("SCRAPE_MOCK", "1");
+    const { client, stats } = makeClient([offerRow(1)], {
+      daily_offer_cap: 5,
+    });
+    const { runOfferPipeline } = await import("@/lib/pipeline/run");
+    await runOfferPipeline(client);
+    expect(stats.settingsReads).toBe(1);
   });
 });

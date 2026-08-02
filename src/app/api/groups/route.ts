@@ -1,5 +1,9 @@
 import { requireUser } from "@/lib/api-auth";
-import { assertJidUnique, validateGroupInput } from "@/lib/wa/groups";
+import {
+  activeLimitError,
+  assertJidUnique,
+  validateGroupInput,
+} from "@/lib/wa/groups";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -29,10 +33,18 @@ export async function POST(request: Request) {
 
   const { data: existing } = await auth.supabase
     .from("wa_groups")
-    .select("id, jid");
+    .select("id, jid, active");
   const dup = assertJidUnique(parsed.value.jid, [], undefined, existing ?? []);
   if (dup) {
     return NextResponse.json({ error: dup }, { status: 409 });
+  }
+
+  if (parsed.value.active !== false) {
+    const activeCount = (existing ?? []).filter((g) => g.active).length;
+    const limit = activeLimitError(activeCount);
+    if (limit) {
+      return NextResponse.json({ error: limit }, { status: 409 });
+    }
   }
 
   const { data, error } = await auth.supabase
@@ -41,7 +53,6 @@ export async function POST(request: Request) {
       jid: parsed.value.jid,
       name: parsed.value.name,
       active: parsed.value.active ?? true,
-      daily_limit: parsed.value.daily_limit ?? null,
       notes: parsed.value.notes ?? null,
     })
     .select()

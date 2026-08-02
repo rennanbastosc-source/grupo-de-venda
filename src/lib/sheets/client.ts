@@ -2,9 +2,9 @@ import { createSign, createPrivateKey } from "node:crypto";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
-const DEFAULT_RANGE = "Ofertas!A:L";
+const DEFAULT_RANGE = "Ofertas!A:D";
 
-/** Header row 1 (documentação): id | title | price | url | source | status | caption | caption_status | affiliate_url | sheets_synced_at | updated_at | notes */
+/** Header row 1 (documentação): id | link | caption | status (enviado/pendente) */
 
 function envEmail(): string | undefined {
   return process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || undefined;
@@ -56,7 +56,7 @@ function b64url(buf: Buffer | string): string {
 }
 
 /** JWT RS256 + exchange por access_token. */
-export async function getAccessToken(): Promise<string> {
+async function getAccessToken(): Promise<string> {
   const { email, key } = assertConfigured();
 
   const now = Math.floor(Date.now() / 1000);
@@ -108,63 +108,24 @@ function sheetNameFromRange(range: string): string {
   return i >= 0 ? range.slice(0, i) : range;
 }
 
-/** POST values:append. Retorna 1ª linha 1-indexed gravada (null se vazio). */
-export async function appendRows(
-  rows: string[][],
-): Promise<{ startRow: number | null }> {
-  if (!rows.length) return { startRow: null };
-  const { sheetId, range } = assertConfigured();
-  const token = await getAccessToken();
-  const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}` +
-    `/values/${encodeURIComponent(range)}:append` +
-    `?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ values: rows }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(
-      `Sheets append falhou HTTP ${res.status}: ${body.slice(0, 200)}`,
-    );
-  }
-
-  const data = (await res.json()) as {
-    updates?: { updatedRange?: string };
-  };
-  const updated = data.updates?.updatedRange ?? "";
-  // e.g. Ofertas!A12:L14
-  const m = updated.match(/![A-Z]+(\d+)/);
-  return { startRow: m ? Number(m[1]) : null };
-}
-
-/** PUT values update — startRow 1-indexed (linha da planilha). */
-export async function updateRows(
-  startRow: number,
-  rows: string[][],
-): Promise<void> {
+/**
+ * Espelho de mão única: reescreve a aba inteira a partir de A1 (header +
+ * linhas) e limpa o excedente de execuções anteriores. Idempotente, sem
+ * estado de linha no banco.
+ */
+export async function overwriteRows(rows: string[][]): Promise<void> {
   if (!rows.length) return;
-  if (startRow < 1) throw new Error("startRow deve ser >= 1");
-
   const { sheetId, range } = assertConfigured();
   const token = await getAccessToken();
   const sheet = sheetNameFromRange(range);
-  const endRow = startRow + rows.length - 1;
-  const updateRange = `${sheet}!A${startRow}:L${endRow}`;
+  const updateRange = `${sheet}!A1:D${rows.length}`;
 
-  const url =
+  const putUrl =
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}` +
     `/values/${encodeURIComponent(updateRange)}` +
     `?valueInputOption=USER_ENTERED`;
 
-  const res = await fetch(url, {
+  const res = await fetch(putUrl, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -179,27 +140,25 @@ export async function updateRows(
       `Sheets update falhou HTTP ${res.status}: ${body.slice(0, 200)}`,
     );
   }
-}
 
-/** GET values */
-export async function readRows(): Promise<string[][]> {
-  const { sheetId, range } = assertConfigured();
-  const token = await getAccessToken();
-  const url =
+  const clearRange = `${sheet}!A${rows.length + 1}:D`;
+  const clearUrl =
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}` +
-    `/values/${encodeURIComponent(range)}`;
+    `/values/${encodeURIComponent(clearRange)}:clear`;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
+  const clearRes = await fetch(clearUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
   });
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
+  if (!clearRes.ok) {
+    const body = await clearRes.text().catch(() => "");
     throw new Error(
-      `Sheets read falhou HTTP ${res.status}: ${body.slice(0, 200)}`,
+      `Sheets clear falhou HTTP ${clearRes.status}: ${body.slice(0, 200)}`,
     );
   }
-
-  const data = (await res.json()) as { values?: string[][] };
-  return data.values ?? [];
 }
