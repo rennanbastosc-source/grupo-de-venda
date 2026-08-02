@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertOfferHasAffiliateLink } from "@/lib/affiliates/require-link";
 import { getWorkerSession } from "@/lib/worker-client";
+import { dayStartInTz } from "./rate-limit";
 
 export type GuardFail = { ok: false; error: string; status: number };
 export type GuardOk = { ok: true };
@@ -102,16 +103,14 @@ export async function assertOfferReady(
   };
 }
 
-/** Já existe job sent/queued/sending para offer+group no dia UTC atual? */
+/** Já existe job sent/queued/sending para offer+group no dia atual (DISPATCH_TZ)? */
 export async function hasDispatchToday(
   supabase: SupabaseClient,
   offerId: string,
   groupId: string,
   now: Date = new Date(),
 ): Promise<boolean> {
-  const dayStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const dayStart = dayStartInTz(now);
   const { data, error } = await supabase
     .from("dispatch_jobs")
     .select("id, status, sent_at, created_at")

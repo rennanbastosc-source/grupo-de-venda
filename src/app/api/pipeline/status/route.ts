@@ -14,7 +14,7 @@ export async function GET() {
     supabase
       .from("app_settings")
       .select(
-        "daily_cap, hourly_cap, min_interval_sec, message_template, auto_dispatch_enabled, auto_dispatch_group_ids, default_affiliate_provider_id, updated_at",
+        "daily_cap, hourly_cap, min_interval_sec, daily_offer_cap, message_template, auto_dispatch_enabled, auto_dispatch_group_ids, default_affiliate_provider_id, updated_at",
       )
       .eq("id", 1)
       .maybeSingle(),

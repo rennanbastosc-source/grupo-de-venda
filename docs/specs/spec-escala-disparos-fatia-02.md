@@ -1,6 +1,6 @@
 # Spec Técnica: [Fatia 02 - Relógio único, janela operacional e caps duplos]
 
-> **Feature:** `escala-disparos` | **Status:** `PENDENTE` | **Data:** 2026-08-02
+> **Feature:** `escala-disparos` | **Status:** `CONCLUÍDO` | **Data:** 2026-08-02
 
 <!-- Arquivo: docs/specs/spec-escala-disparos-fatia-02.md -->
 
@@ -61,7 +61,7 @@
 - [ ] **Validação Estrita:** `tsc`, `lint`, `vitest run` verdes.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** migration 012 · fuso único em rate-limit/process/guards · settings API+UI · testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** migration 012 · `DISPATCH_TZ`/`dayStartInTz` em rate-limit + process + guards · `daily_offer_cap` em settings API, pipeline/status e UI · testes (loop verde: 180 testes)
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`

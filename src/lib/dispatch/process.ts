@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { workerFetch } from "@/lib/worker-client";
-import { canSendNow, type RateSettings } from "./rate-limit";
+import { canSendNow, dayStartInTz, type RateSettings } from "./rate-limit";
 
 export type ProcessResult = {
   processed: number;
@@ -46,13 +46,16 @@ async function reapStuckJobs(
 async function loadSettings(supabase: SupabaseClient): Promise<RateSettings> {
   const { data } = await supabase
     .from("app_settings")
-    .select("daily_cap, hourly_cap, min_interval_sec, sleep_start, sleep_end")
+    .select(
+      "daily_cap, hourly_cap, min_interval_sec, daily_offer_cap, sleep_start, sleep_end",
+    )
     .eq("id", 1)
     .maybeSingle();
   return {
     daily_cap: data?.daily_cap ?? 35,
     hourly_cap: data?.hourly_cap ?? 10,
     min_interval_sec: data?.min_interval_sec ?? 45,
+    daily_offer_cap: data?.daily_offer_cap ?? 10,
     sleep_start: data?.sleep_start ?? null,
     sleep_end: data?.sleep_end ?? null,
   };
@@ -107,9 +110,7 @@ export async function processDispatchQueue(
   await reapStuckJobs(supabase, now);
 
   const settings = await loadSettings(supabase);
-  const dayStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  const dayStart = dayStartInTz(now);
   const hourStart = new Date(now.getTime() - 60 * 60 * 1000);
 
   let daily = await countSentSince(supabase, dayStart.toISOString());
