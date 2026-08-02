@@ -31,10 +31,47 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   const body = await request.json().catch(() => ({}));
+  const offerId = typeof body.offerId === "string" ? body.offerId : undefined;
+  const explicitProviderId =
+    typeof body.providerId === "string" ? body.providerId.trim() : "";
+
+  // Sem provider explícito: roteia por source da oferta, igual ao pipeline
+  // (mercadolivre → provider ML; demais → generic-tag). Evita re-criar o bug
+  // "URL Invalid" ao emitir oferta amazon com provider ML manualmente.
+  let providerId = explicitProviderId;
+  if (!providerId && offerId) {
+    const { data: offer } = await auth.supabase
+      .from("offers")
+      .select("source")
+      .eq("id", offerId)
+      .maybeSingle();
+    if (offer) {
+      const slug =
+        offer.source === "mercadolivre" ? "mercadolivre" : "generic-tag";
+      const { data: prow } = await auth.supabase
+        .from("affiliate_providers")
+        .select("id")
+        .eq("slug", slug)
+        .eq("active", true)
+        .maybeSingle();
+      if (prow) {
+        providerId = prow.id;
+      } else {
+        // fallback: provider padrão do app
+        const { data: settings } = await auth.supabase
+          .from("app_settings")
+          .select("default_affiliate_provider_id")
+          .eq("id", 1)
+          .maybeSingle();
+        providerId = settings?.default_affiliate_provider_id ?? "";
+      }
+    }
+  }
+
   const result = await emitAffiliateLink(auth.supabase, {
-    offerId: typeof body.offerId === "string" ? body.offerId : undefined,
+    offerId,
     url: typeof body.url === "string" ? body.url : undefined,
-    providerId: typeof body.providerId === "string" ? body.providerId : "",
+    providerId,
   });
 
   if (!result.ok) {

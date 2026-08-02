@@ -150,15 +150,14 @@ export function OffersManager() {
   }, []);
 
   async function emitAffiliate(offerId: string) {
-    if (!defaultProviderId) {
-      setLinkMsg("Nenhum provider ativo");
-      return;
-    }
     setLinkMsg(null);
+    // Sem providerId: o server roteia por source da oferta (mercadolivre →
+    // meli.la; demais → generic-tag), igual ao pipeline. Evita re-criar o bug
+    // "URL Invalid" ao emitir oferta amazon com provider ML manualmente.
     const res = await fetch("/api/affiliate-links", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ offerId, providerId: defaultProviderId }),
+      body: JSON.stringify({ offerId }),
     });
     const data = await res.json();
     if (!res.ok) {

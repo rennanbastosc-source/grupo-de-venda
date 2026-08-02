@@ -356,13 +356,29 @@ async function ensureAffiliates(
     (providers ?? []).map((p) => [p.slug as string, p.id as string]),
   );
 
-  const { data: offers, error } = await supabase
+  // Exclui ofertas com link failed recente (head-of-line): oferta antiga com
+  // failed re-tentada a cada run engole o batch e bloqueia ofertas novas.
+  // Failed de <1h sai da fila; re-tenta depois de 1h.
+  const { data: recentFails } = await supabase
+    .from("affiliate_links")
+    .select("offer_id")
+    .eq("status", "failed")
+    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
+  const failedOfferIds = [
+    ...new Set(
+      (recentFails ?? []).map((r) => r.offer_id).filter(Boolean),
+    ),
+  ];
+
+  let q = supabase
     .from("offers")
     .select("id, source")
     .eq("caption_status", "ready")
     .in("status", ["new", "approved"])
     .order("scraped_at", { ascending: true })
     .limit(BATCH);
+  if (failedOfferIds.length) q = q.not("id", "in", failedOfferIds);
+  const { data: offers, error } = await q;
 
   if (error) {
     result.errors.push(`affiliate: ${error.message}`);
