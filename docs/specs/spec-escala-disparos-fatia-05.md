@@ -1,6 +1,6 @@
 # Spec Técnica: [Fatia 05 - Funil de caption dimensionado pelo cap]
 
-> **Feature:** `escala-disparos` | **Status:** `PENDENTE` | **Data:** 2026-08-02
+> **Feature:** `escala-disparos` | **Status:** `CONCLUÍDO` | **Data:** 2026-08-02
 
 <!-- Arquivo: docs/specs/spec-escala-disparos-fatia-05.md -->
 
@@ -38,7 +38,7 @@
 - [ ] **Validação Estrita:** `tsc`, `lint`, `vitest run` verdes.
 
 ## 6. Checkpoint de Execução
-- **Status:** `PENDENTE`
-- **Concluído:** —
-- **Pendente:** batches dinâmicos em `run.ts` · agenda horária no runbook · testes
+- **Status:** `CONCLUÍDO`
+- **Concluído:** `loadPipelineSettings` (leitura única/run) · batches de caption/afiliado/enqueue = clamp(daily_offer_cap, 1, 25) · `CAPTION_BATCH` fixo morto · agenda horária `10 7-22 * * *` já registrada no runbook (Fatia 04) · 4 testes novos (192 verdes)
+- **Pendente:** —
 - **Próximo comando:** `/sdd-implement`

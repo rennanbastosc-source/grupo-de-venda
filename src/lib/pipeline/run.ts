@@ -27,7 +27,37 @@ const HEADER = [
 ] as const;
 
 const BATCH = 10;
-const CAPTION_BATCH = 3;
+// Teto duro por run: protege o 9router (30s/caption, sequencial).
+const MAX_BATCH = 25;
+
+type PipelineSettings = {
+  /** Batch das fases caption/afiliado/enqueue, derivado de daily_offer_cap. */
+  batch: number;
+  defaultProviderId: string | null;
+  autoDispatchEnabled: boolean;
+  autoGroupIds: string[];
+};
+
+/** Leitura única de app_settings por run — as fases recebem por parâmetro. */
+async function loadPipelineSettings(
+  supabase: SupabaseClient,
+): Promise<PipelineSettings> {
+  const { data } = await supabase
+    .from("app_settings")
+    .select(
+      "daily_offer_cap, default_affiliate_provider_id, auto_dispatch_enabled, auto_dispatch_group_ids",
+    )
+    .eq("id", 1)
+    .maybeSingle();
+  const cap = data?.daily_offer_cap ?? 10;
+  return {
+    batch: Math.min(Math.max(cap, 1), MAX_BATCH),
+    defaultProviderId:
+      (data?.default_affiliate_provider_id as string | null) ?? null,
+    autoDispatchEnabled: Boolean(data?.auto_dispatch_enabled),
+    autoGroupIds: (data?.auto_dispatch_group_ids ?? []) as string[],
+  };
+}
 
 type OfferRow = {
   id: string;
@@ -156,6 +186,7 @@ async function exportToSheets(
 async function generateCaptions(
   supabase: SupabaseClient,
   result: PipelineResult,
+  batch: number,
 ): Promise<void> {
   const { data: offers, error } = await supabase
     .from("offers")
@@ -165,7 +196,7 @@ async function generateCaptions(
     .in("caption_status", ["pending", "none"])
     .in("status", ["new", "approved"])
     .order("scraped_at", { ascending: true })
-    .limit(CAPTION_BATCH);
+    .limit(batch);
 
   if (error) {
     result.errors.push(`caption: ${error.message}`);
@@ -335,16 +366,9 @@ async function importFromSheets(
 async function ensureAffiliates(
   supabase: SupabaseClient,
   result: PipelineResult,
+  cfg: PipelineSettings,
 ): Promise<void> {
-  const { data: settings } = await supabase
-    .from("app_settings")
-    .select("default_affiliate_provider_id")
-    .eq("id", 1)
-    .maybeSingle();
-  const defaultProviderId = settings?.default_affiliate_provider_id as
-    | string
-    | null
-    | undefined;
+  const defaultProviderId = cfg.defaultProviderId;
   if (!defaultProviderId) return;
 
   // Roteia provider por source: mercadolivre → provider ML; demais
@@ -376,7 +400,7 @@ async function ensureAffiliates(
     .eq("caption_status", "ready")
     .in("status", ["new", "approved"])
     .order("scraped_at", { ascending: true })
-    .limit(BATCH);
+    .limit(cfg.batch);
   if (failedOfferIds.length) q = q.not("id", "in", failedOfferIds);
   const { data: offers, error } = await q;
 
@@ -424,15 +448,10 @@ async function ensureAffiliates(
 async function autoEnqueue(
   supabase: SupabaseClient,
   result: PipelineResult,
+  cfg: PipelineSettings,
 ): Promise<void> {
-  const { data: settings } = await supabase
-    .from("app_settings")
-    .select("auto_dispatch_enabled, auto_dispatch_group_ids")
-    .eq("id", 1)
-    .maybeSingle();
-
-  if (!settings?.auto_dispatch_enabled) return;
-  const groupIds = (settings.auto_dispatch_group_ids ?? []) as string[];
+  if (!cfg.autoDispatchEnabled) return;
+  const groupIds = cfg.autoGroupIds;
   if (!groupIds.length) return;
 
   const { data: offers, error } = await supabase
@@ -441,7 +460,7 @@ async function autoEnqueue(
     .eq("caption_status", "ready")
     .in("status", ["new", "approved"])
     .order("scraped_at", { ascending: true })
-    .limit(BATCH);
+    .limit(cfg.batch);
 
   if (error) {
     result.errors.push(`enqueue: ${error.message}`);
@@ -489,11 +508,13 @@ export async function runOfferPipeline(
     errors: [],
   };
 
+  const cfg = await loadPipelineSettings(supabase);
+
   await exportToSheets(supabase, result);
-  await generateCaptions(supabase, result);
+  await generateCaptions(supabase, result, cfg.batch);
   await importFromSheets(supabase, result);
-  await ensureAffiliates(supabase, result);
-  await autoEnqueue(supabase, result);
+  await ensureAffiliates(supabase, result, cfg);
+  await autoEnqueue(supabase, result, cfg);
 
   return result;
 }
