@@ -44,11 +44,16 @@ async function reapStuckJobs(
     .limit(20);
 
   for (const j of stuck ?? []) {
+    const attempts = (j.attempts ?? 0) + 1;
+    // Teto também aqui: MAX_ATTEMPTS só cobria falha de envio, então um job
+    // que falhava depois do envio girava no reaper indefinidamente.
+    const terminal = attempts >= MAX_ATTEMPTS;
     await supabase
       .from("dispatch_jobs")
       .update({
-        status: "queued",
-        attempts: (j.attempts ?? 0) + 1,
+        status: terminal ? "failed" : "queued",
+        error: terminal ? `${attempts} tentativas presas em sending` : null,
+        attempts,
         claimed_at: null,
       })
       .eq("id", j.id)
@@ -186,7 +191,13 @@ export async function processDispatchQueue(
     .order("scheduled_for", { ascending: true })
     .limit(50);
 
-  const jobs = (burst ?? []).slice(0, maxJobs);
+  // 1 job por grupo: jobs irmãos da mesma oferta (ex.: sobra de ontem +
+  // reenfileiramento de hoje) chegariam juntos e duplicariam a mensagem.
+  const porGrupo = new Map<string, NonNullable<typeof burst>[number]>();
+  for (const j of burst ?? []) {
+    if (!porGrupo.has(j.group_id)) porGrupo.set(j.group_id, j);
+  }
+  const jobs = [...porGrupo.values()].slice(0, maxJobs);
 
   for (let i = 0; i < jobs.length; i++) {
     const job = jobs[i];
@@ -276,7 +287,7 @@ export async function processDispatchQueue(
       }
     } else {
       const sentAt = clock().toISOString();
-      await supabase
+      const { error: markErr } = await supabase
         .from("dispatch_jobs")
         .update({
           status: "sent",
@@ -284,6 +295,22 @@ export async function processDispatchQueue(
           error: null,
         })
         .eq("id", job.id);
+
+      if (markErr) {
+        // Índice único (oferta, grupo, dia) recusou: um job irmão já ocupou
+        // o lugar hoje. Sem isto o job ficava em `sending` para sempre e o
+        // reaper o devolvia como head da fila, travando todos os slots.
+        await supabase
+          .from("dispatch_jobs")
+          .update({
+            status: "skipped",
+            error: "Oferta já enviada a este grupo hoje",
+            claimed_at: null,
+          })
+          .eq("id", job.id);
+        result.skipped += 1;
+        continue;
+      }
 
       await supabase
         .from("offers")

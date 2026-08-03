@@ -103,22 +103,37 @@ export async function assertOfferReady(
   };
 }
 
-/** Já existe job sent/queued/sending para offer+group no dia atual (DISPATCH_TZ)? */
+/**
+ * Já existe job para offer+group que impeça um novo?
+ * Pendente (`queued`/`sending`) bloqueia em qualquer data — senão a sobra de
+ * ontem vira duplicata hoje. `sent` bloqueia só no dia atual (DISPATCH_TZ),
+ * porque reenviar em outro dia é permitido.
+ */
 export async function hasDispatchToday(
   supabase: SupabaseClient,
   offerId: string,
   groupId: string,
   now: Date = new Date(),
 ): Promise<boolean> {
-  const dayStart = dayStartInTz(now);
-  const { data, error } = await supabase
+  const base = supabase
     .from("dispatch_jobs")
-    .select("id, status, sent_at, created_at")
+    .select("id")
     .eq("offer_id", offerId)
-    .eq("group_id", groupId)
-    .in("status", ["queued", "sending", "sent"])
-    .gte("created_at", dayStart.toISOString())
+    .eq("group_id", groupId);
+
+  const { data: pending, error } = await base
+    .in("status", ["queued", "sending"])
     .limit(1);
   if (error) return false;
-  return (data?.length ?? 0) > 0;
+  if ((pending?.length ?? 0) > 0) return true;
+
+  const { data: sentHoje } = await supabase
+    .from("dispatch_jobs")
+    .select("id")
+    .eq("offer_id", offerId)
+    .eq("group_id", groupId)
+    .eq("status", "sent")
+    .gte("sent_at", dayStartInTz(now).toISOString())
+    .limit(1);
+  return (sentHoje?.length ?? 0) > 0;
 }

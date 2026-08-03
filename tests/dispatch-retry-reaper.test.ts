@@ -149,6 +149,66 @@ describe("reaper de sending preso", () => {
       .map((o) => o.args.join("="));
     expect(eqs).toContain("status=sending");
   });
+
+  it("stuck no teto de tentativas vira failed em vez de voltar pra fila", async () => {
+    vi.mocked(workerFetch).mockReset();
+    vi.mocked(workerFetch).mockResolvedValue({
+      ok: true,
+      data: { status: "connected" },
+    } as never);
+    const updates: {
+      table: string;
+      payload: Record<string, unknown>;
+      ops: Op[];
+    }[] = [];
+    await processDispatchQueue(
+      makeSupabase(
+        baseHandler({
+          job: null,
+          stuck: [{ id: "stuck1", attempts: 2 }],
+          updates,
+        }),
+      ),
+    );
+    const reap = updates.find((u) => u.payload.attempts === 3);
+    expect(reap?.payload.status).toBe("failed");
+  });
+});
+
+describe("índice único recusa marcar sent", () => {
+  it("vira skipped em vez de ficar preso em sending", async () => {
+    vi.mocked(workerFetch).mockReset();
+    vi.mocked(workerFetch).mockImplementation(async (path: string) => {
+      if (path === "/session") {
+        return { ok: true, data: { status: "connected" } } as never;
+      }
+      return { ok: true, data: { ok: true, deduped: true } } as never;
+    });
+    const updates: {
+      table: string;
+      payload: Record<string, unknown>;
+      ops: Op[];
+    }[] = [];
+    const base = baseHandler({ job: makeJob(0), updates });
+    const handler: Handler = (table, ops) => {
+      const upd = updatePayload(ops);
+      if (upd?.status === "sent") {
+        updates.push({ table, payload: upd, ops });
+        return {
+          data: null,
+          error: { message: "duplicate key value violates unique constraint" },
+        };
+      }
+      return base(table, ops);
+    };
+
+    const r = await processDispatchQueue(makeSupabase(handler));
+
+    expect(r.sent).toBe(0);
+    expect(r.skipped).toBe(1);
+    const skip = updates.find((u) => u.payload.status === "skipped");
+    expect(skip?.payload.claimed_at).toBeNull();
+  });
 });
 
 describe("deduped do worker", () => {

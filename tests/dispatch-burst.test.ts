@@ -205,4 +205,21 @@ describe("burst broadcast com jitter", () => {
     expect(r.skipped).toBe(1);
     expect(r.sent).toBe(1);
   });
+
+  it("jobs irmãos do mesmo grupo enviam só uma vez", async () => {
+    // sobra de ontem + reenfileiramento de hoje: mesma oferta, mesmo grupo
+    const gemeo = { ...job("j2"), group_id: "grp-j1" };
+    const updates: { table: string; payload: Record<string, unknown> }[] = [];
+    const r = await processDispatchQueue(
+      makeSupabase(
+        burstHandler({
+          jobs: [job("j1"), gemeo],
+          updates: updates as never,
+        }),
+      ),
+      { sleepFn: async () => {} },
+    );
+    expect(r.sent).toBe(1);
+    expect(r.processed).toBe(1);
+  });
 });
