@@ -168,6 +168,27 @@ export function OverviewDashboard() {
               0 disparos hoje.
             </p>
           ) : null}
+
+          <p className="text-sm font-medium text-muted">
+            Agenda:{" "}
+            <a
+              href="https://console.cron-job.org/"
+              target="_blank"
+              rel="noreferrer"
+              className="font-extrabold text-ink underline decoration-2 underline-offset-2"
+            >
+              console cron-job.org
+            </a>
+            {" · "}
+            <a
+              href="https://github.com/rennanbastosc-source/grupo-de-venda/blob/main/docs/runbooks/crons-externos.md"
+              target="_blank"
+              rel="noreferrer"
+              className="font-extrabold text-ink underline decoration-2 underline-offset-2"
+            >
+              runbook de crons
+            </a>
+          </p>
         </>
       ) : null}
     </div>

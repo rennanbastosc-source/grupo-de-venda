@@ -15,6 +15,12 @@ const SOURCES = new Set<ScrapeSource>([
   "shopee",
   "manual",
 ]);
+const CAPTION_STATUSES = new Set([
+  "none",
+  "pending",
+  "ready",
+  "failed",
+]);
 
 export async function GET(request: Request) {
   const auth = await requireUser();
@@ -23,6 +29,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const source = searchParams.get("source");
+  const captionStatus = searchParams.get("caption_status");
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "30", 10)));
   const offset = (page - 1) * limit;
@@ -44,6 +51,10 @@ export async function GET(request: Request) {
   if (source && SOURCES.has(source as ScrapeSource)) {
     countQuery = countQuery.eq("source", source);
     q = q.eq("source", source);
+  }
+  if (captionStatus && CAPTION_STATUSES.has(captionStatus)) {
+    countQuery = countQuery.eq("caption_status", captionStatus);
+    q = q.eq("caption_status", captionStatus);
   }
 
   const [{ count, error: countErr }, { data, error }] = await Promise.all([

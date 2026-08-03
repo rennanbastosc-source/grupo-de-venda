@@ -97,6 +97,7 @@ async function generateCaptions(
         .update({
           caption,
           caption_status: "ready",
+          caption_error: null,
           updated_at: now,
         })
         .eq("id", o.id);
@@ -107,11 +108,16 @@ async function generateCaptions(
       result.captioned += 1;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      // ponytail: 300 chars, sem HTML — mesmo teto do worker-client (§14.4)
+      const errText = (
+        msg.trimStart().startsWith("<") ? `provedor HTML: ${msg.slice(0, 40)}` : msg
+      ).slice(0, 300);
       result.errors.push(`caption ${o.id}: ${msg}`);
       await supabase
         .from("offers")
         .update({
           caption_status: "failed",
+          caption_error: errText,
           updated_at: new Date().toISOString(),
         })
         .eq("id", o.id);

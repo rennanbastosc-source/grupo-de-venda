@@ -10,6 +10,9 @@ type Offer = {
   price_cents: number | null;
   original_price_cents?: number | null;
   status: string;
+  caption_status?: string | null;
+  caption_error?: string | null;
+  caption?: string | null;
   url: string;
   scraped_at: string;
 };
@@ -48,6 +51,19 @@ function getStatusBadge(status: string) {
   }
 }
 
+function getCaptionBadge(status: string | null | undefined) {
+  switch (status) {
+    case "ready":
+      return "bg-lime text-ink border-ink";
+    case "failed":
+      return "bg-danger text-white border-ink";
+    case "pending":
+      return "bg-ice-deep text-ink border-ink";
+    default:
+      return "bg-white text-ink-soft border-ink";
+  }
+}
+
 function getSourceBadge(source: string) {
   switch (source) {
     case "mercadolivre":
@@ -67,6 +83,7 @@ export function OffersManager() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [status, setStatus] = useState("");
   const [source, setSource] = useState("");
+  const [captionStatus, setCaptionStatus] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(30);
   const [total, setTotal] = useState(0);
@@ -109,6 +126,7 @@ export function OffersManager() {
       const qs = new URLSearchParams();
       if (status) qs.set("status", status);
       if (source) qs.set("source", source);
+      if (captionStatus) qs.set("caption_status", captionStatus);
       qs.set("page", String(page));
       qs.set("limit", String(limit));
 
@@ -123,7 +141,7 @@ export function OffersManager() {
     } finally {
       setLoading(false);
     }
-  }, [status, source, page, limit]);
+  }, [status, source, captionStatus, page, limit]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -273,6 +291,23 @@ export function OffersManager() {
               <option value="shopee">Shopee</option>
               <option value="magalu">Magalu</option>
               <option value="manual">Manual</option>
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="b-label">Caption</span>
+            <select
+              value={captionStatus}
+              onChange={(e) => {
+                setCaptionStatus(e.target.value);
+                setPage(1);
+              }}
+              className="b-input !mt-1 !w-auto"
+            >
+              <option value="">Todas</option>
+              <option value="none">none</option>
+              <option value="pending">pending</option>
+              <option value="ready">ready</option>
+              <option value="failed">failed</option>
             </select>
           </label>
         </div>
@@ -429,6 +464,9 @@ export function OffersManager() {
                   <th className="px-4 py-3 text-xs font-black uppercase tracking-wider">
                     Status
                   </th>
+                  <th className="px-4 py-3 text-xs font-black uppercase tracking-wider">
+                    Caption
+                  </th>
                   <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wider">
                     Ações
                   </th>
@@ -470,6 +508,15 @@ export function OffersManager() {
                         )}`}
                       >
                         {o.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span
+                        className={`inline-block border-[2px] px-2 py-0.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_#000] ${getCaptionBadge(
+                          o.caption_status,
+                        )}`}
+                      >
+                        {o.caption_status ?? "none"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">

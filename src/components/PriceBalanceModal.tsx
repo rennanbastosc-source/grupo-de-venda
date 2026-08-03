@@ -9,6 +9,9 @@ type Offer = {
   price_cents: number | null;
   original_price_cents?: number | null;
   status: string;
+  caption_status?: string | null;
+  caption_error?: string | null;
+  caption?: string | null;
   url: string;
   scraped_at: string;
 };
@@ -147,6 +150,32 @@ export function PriceBalanceModal({
               * Sem preço original capturado para comparativo de desconto percentual.
             </p>
           )}
+        </div>
+
+        {/* Caption (status + erro só no modal) */}
+        <div className="border-[3px] border-ink bg-white p-4 space-y-2">
+          <p className="b-label text-xs">Caption</p>
+          <p className="text-xs font-black uppercase">
+            status: {offer.caption_status ?? "none"}
+          </p>
+          {offer.caption_status === "ready" && offer.caption ? (
+            <p className="text-sm font-medium text-ink whitespace-pre-wrap">
+              {offer.caption}
+            </p>
+          ) : null}
+          {offer.caption_status === "failed" && offer.caption_error ? (
+            <p
+              className="text-sm font-bold text-danger break-words"
+              role="alert"
+            >
+              {offer.caption_error}
+            </p>
+          ) : null}
+          {offer.caption_status === "failed" && !offer.caption_error ? (
+            <p className="text-sm text-muted italic">
+              Falhou sem motivo gravado (oferta anterior à coluna caption_error).
+            </p>
+          ) : null}
         </div>
 
         {/* Ações Rápidas da Oferta */}

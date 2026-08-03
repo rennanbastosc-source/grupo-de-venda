@@ -187,13 +187,45 @@ describe("runOfferPipeline", () => {
 
   it("repesca caption_status failed e marca ready", async () => {
     vi.stubEnv("SCRAPE_MOCK", "1");
-    const offer: Row = { ...offerRow(2), caption_status: "failed" };
+    const offer: Row = {
+      ...offerRow(2),
+      caption_status: "failed",
+      caption_error: "erro velho",
+    };
     const { client } = makeClient([offer]);
     const { runOfferPipeline } = await import("@/lib/pipeline/run");
     const result = await runOfferPipeline(client);
 
     expect(result.captioned).toBe(1);
     expect(offer.caption_status).toBe("ready");
+    expect(offer.caption_error).toBeNull();
+  });
+
+  it("grava caption_error truncado no fail", async () => {
+    vi.resetModules();
+    vi.stubEnv("SCRAPE_MOCK", "");
+    vi.stubEnv("NINE_ROUTER_BASE_URL", "http://router.test/v1");
+    const long = "x".repeat(500);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        statusText: "Too Many",
+        text: async () => long,
+        json: async () => ({}),
+      }),
+    );
+
+    const failOffer: Row = { ...offerRow(4), caption_status: "none" };
+    const { client } = makeClient([failOffer]);
+    const { runOfferPipeline } = await import("@/lib/pipeline/run");
+    await runOfferPipeline(client);
+
+    expect(failOffer.caption_status).toBe("failed");
+    expect(typeof failOffer.caption_error).toBe("string");
+    expect(String(failOffer.caption_error).length).toBeGreaterThan(0);
+    expect(String(failOffer.caption_error).length).toBeLessThanOrEqual(300);
   });
 
   it("batch de caption segue daily_offer_cap", async () => {

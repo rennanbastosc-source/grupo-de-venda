@@ -50,6 +50,17 @@ describe("hasDispatchToday", () => {
     expect(r).toBe(false);
   });
 
+  // §14.6 caso 3: sent ontem não bloqueia re-enqueue no dia Fortaleza atual
+  // (mock sentToday:false = consulta gte dayStart vazia → só havia sent antigo)
+  it("libera re-enqueue no dia seguinte após sent ontem", async () => {
+    const r = await hasDispatchToday(
+      guardSupabase({ pending: false, sentToday: false }),
+      "o1",
+      "g1",
+    );
+    expect(r).toBe(false);
+  });
+
   it("consulta de sent recorta pelo início do dia", async () => {
     const seen: Op[][] = [];
     await hasDispatchToday(guardSupabase({ seen }), "o1", "g1");
@@ -57,5 +68,17 @@ describe("hasDispatchToday", () => {
     expect(sentOps.some((o) => o.method === "gte" && o.args[0] === "sent_at")).toBe(
       true,
     );
+  });
+
+  // §14.6 caso 1 (redundante com o primeiro it, nome explícito p/ regressão)
+  it("bloqueia irmão se queued de ontem ainda existe (sem filtro de data)", async () => {
+    const seen: Op[][] = [];
+    const r = await hasDispatchToday(
+      guardSupabase({ pending: true, seen }),
+      "o1",
+      "g1",
+    );
+    expect(r).toBe(true);
+    expect(seen[0].some((o) => o.method === "gte")).toBe(false);
   });
 });
