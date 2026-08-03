@@ -46,10 +46,13 @@ export async function workerFetch<T>(
       cache: "no-store",
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const text = (await res.text().catch(() => "")).slice(0, 300);
+      // Render serve página HTML de erro (~200KB) quando o worker hiberna;
+      // esse corpo ia inteiro para dispatch_jobs.error
+      const useful = text && !text.trimStart().startsWith("<");
       return {
         ok: false,
-        error: text || `Worker HTTP ${res.status}`,
+        error: useful ? text : `Worker HTTP ${res.status}`,
         status: res.status,
       };
     }
