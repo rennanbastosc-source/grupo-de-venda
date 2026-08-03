@@ -78,7 +78,12 @@ async function generateCaptions(
   }
   if (!offers?.length) return;
 
-  for (const o of offers as OfferRow[]) {
+  for (const [i, o] of (offers as OfferRow[]).entries()) {
+    // rate limit do provedor (Google): >=1,5s entre chamadas evita 429;
+    // no topo do loop pra valer também quando a iteração anterior deu continue
+    if (i > 0 && process.env.SCRAPE_MOCK !== "1") {
+      await new Promise((r) => setTimeout(r, 1500));
+    }
     try {
       const caption = await generateCaption({
         title: o.title,
