@@ -7,73 +7,28 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # AGENTS.md
 
 @STATE.md
-@AGENTS.md
 
 > **CRITICAL RULE:** Fale SEMPRE em PT-BR.
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+Este arquivo carrega o **conhecimento deste projeto** (§5–13). O *como trabalhar* genérico vive nas skills — invoque-as em vez de improvisar.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+## 0. Roteamento de skills
 
-## 1. Think Before Coding
+Fluxo de feature completo: `/sdd-plan` → `/sdd-spec` → `/sdd-implement` → `/sdd-validate` → `/sdd-finish`. As skills SDD ditam os próprios passos; a tabela abaixo vale **fora** delas.
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+| Situação | Skill |
+|---|---|
+| Feature/componente/comportamento novo, antes de qualquer código | `superpowers:brainstorming` |
+| Bug, teste falhando, comportamento inesperado — antes de propor a correção | `superpowers:systematic-debugging` |
+| Implementar feature ou bugfix — antes do código de implementação | `superpowers:test-driven-development` |
+| Antes de declarar pronto/corrigido/passando, ou de commitar | `superpowers:verification-before-completion` |
+| Escrever, refatorar ou revisar código (escolha da solução) | `ponytail` (ativo por hook) |
+| Plano escrito de múltiplos passos, fora do SDD | `superpowers:writing-plans` |
+| Revisar diff / receber review | `superpowers:requesting-code-review` / `receiving-code-review` |
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+Regra de precedência: **process skill primeiro**, skill de implementação depois. Se há 1% de chance de uma skill se aplicar, invoque — descartar depois é barato.
 
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+> §1–4 (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution) foram removidas — viraram `superpowers:brainstorming`, `ponytail` e `superpowers:test-driven-development` na tabela do §0. A numeração de §5 em diante é preservada porque specs, PRDs e `STATE.md` referenciam essas seções por número.
 
 ## 5. Git — política de operações
 
@@ -163,18 +118,10 @@ Placeholders `NEXT_PUBLIC_SUPABASE_*=https://ci.supabase.co` **só** nos jobs `q
 - Secrets só server/env — nunca client.
 - Detalhe as-built: `STATE.md` + `docs/specs/`.
 
-## 14. Auto-Questionamento e Validação Defensiva (Obrigatório)
+## 14. Perguntas defensivas específicas deste projeto
 
-Antes de declarar qualquer tarefa como concluída ou subir um PR/commit:
+O procedimento genérico de "não declare pronto sem evidência" é `superpowers:verification-before-completion` — invoque. O que a skill não sabe, e você tem que perguntar aqui:
 
-1. **Questionamento de Degradação Graciosa (Fallback)**:
-   - *"E se as variáveis de ambiente opcionais (`*_LOGIN`, `*_PASS`, etc.) estivem ausentes na produção?"*
-   - O código DEVE degradar graciosamente (ex: modo público sem cookies) em vez de lançar exceções fatais que quebram o fluxo principal.
-2. **Questionamento do Fluxo Completo de Ponta a Ponta**:
-   - *"Se o usuário clicar no botão agora sem nenhuma env opcional configurada, a UI vai quebrar ou vai funcionar?"*
-   - Testar não apenas que os testes unitários passam, mas que o comportamento em runtime não gera mensagens de erro impeditivas ou badges travadas em `UNKNOWN`/`ERROR`.
-3. **Questionamento de Rede e Mocks no CI**:
-   - *"Minha implementação faz chamadas de rede externas ou toca no banco que podem dar timeout no CI ou falhar no build?"*
-   - Verificar se `ci.supabase.co` ou `SCRAPE_MOCK=1` estão tratados em todas as camadas de armazenamento/infraestrutura.
-4. **Verificação Dupla dos Efeitos Colaterais**:
-   - Se uma função falhar internamente, os seletores/stores atualizam a UI com o motivo legível em vez de falhar silenciosamente ou manter o estado desatualizado?
+1. **Envs opcionais ausentes em produção** (`*_LOGIN`, `*_PASS`, `FIRECRAWL_SHOPEE_PROFILE`): o código degrada graciosamente (modo público sem cookies) ou lança exceção fatal que derruba o fluxo? Exceção fatal é bug.
+2. **Rede e banco no CI** (ver §11): todo módulo novo com `createClient`/`fetch` trata `ci.supabase.co` e `SCRAPE_MOCK=1` em **todas** as camadas? Sem isso são 5s de timeout por teste.
+3. **Falha silenciosa na UI**: quando a função server falha, o seletor/store propaga o motivo legível, ou a badge trava em `UNKNOWN`/`ERROR` com estado velho?
