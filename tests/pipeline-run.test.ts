@@ -152,6 +152,17 @@ describe("runOfferPipeline", () => {
     expect(String(offer.caption)).not.toContain("http");
   });
 
+  it("repesca caption_status failed e marca ready", async () => {
+    vi.stubEnv("SCRAPE_MOCK", "1");
+    const offer: Row = { ...offerRow(2), caption_status: "failed" };
+    const { client } = makeClient([offer]);
+    const { runOfferPipeline } = await import("@/lib/pipeline/run");
+    const result = await runOfferPipeline(client);
+
+    expect(result.captioned).toBe(1);
+    expect(offer.caption_status).toBe("ready");
+  });
+
   it("batch de caption segue daily_offer_cap", async () => {
     vi.stubEnv("SCRAPE_MOCK", "1");
     const offers = Array.from({ length: 15 }, (_, i) => offerRow(i));

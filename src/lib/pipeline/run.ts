@@ -54,7 +54,7 @@ type OfferRow = {
   updated_at: string;
 };
 
-/** Gera legendas via 9router para caption_status pending|none. */
+/** Gera legendas via 9router para caption_status pending|none|failed (repescagem). */
 async function generateCaptions(
   supabase: SupabaseClient,
   result: PipelineResult,
@@ -65,7 +65,9 @@ async function generateCaptions(
     .select(
       "id, title, price_cents, url, source, status, caption, caption_status, updated_at",
     )
-    .in("caption_status", ["pending", "none"])
+    // ponytail: failed reentra todo run (erro 401/429 é transitório); se um dia
+    // uma oferta "envenenada" monopolizar o batch, adicionar contador de tentativas
+    .in("caption_status", ["pending", "none", "failed"])
     .in("status", ["new", "approved"])
     .order("scraped_at", { ascending: true })
     .limit(batch);
