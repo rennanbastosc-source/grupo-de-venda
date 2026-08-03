@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateCaption } from "@/lib/ai/caption";
 import { emitAffiliateLink } from "@/lib/affiliates/emit";
+import { providerSlugForSource } from "@/lib/affiliates/route-provider";
 import { enqueueDispatch } from "@/lib/dispatch/enqueue";
 import { formatPriceCents } from "@/lib/dispatch/template";
 import { isSheetsConfigured, overwriteRows } from "@/lib/sheets/client";
@@ -171,12 +172,9 @@ async function ensureAffiliates(
   if (!offers?.length) return;
 
   for (const o of offers) {
-    // mercadolivre → provider ML (link curto meli.la); demais sources →
-    // generic-tag. Fallback para o default se o slug não existir.
+    // Regra compartilhada com o guard do disparo (route-provider.ts).
     const providerId =
-      o.source === "mercadolivre"
-        ? (providerBySlug.get("mercadolivre") ?? defaultProviderId)
-        : (providerBySlug.get("generic-tag") ?? defaultProviderId);
+      providerBySlug.get(providerSlugForSource(o.source)) ?? defaultProviderId;
 
     // Skip só se já existe link ok DO provider que seria usado — link ok de
     // outro provider (ex: generic-tag em oferta ML pré-meli.la) não bloqueia

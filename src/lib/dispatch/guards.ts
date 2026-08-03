@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertOfferHasAffiliateLink } from "@/lib/affiliates/require-link";
+import { resolveProviderId } from "@/lib/affiliates/route-provider";
 import { getWorkerSession } from "@/lib/worker-client";
 import { dayStartInTz } from "./rate-limit";
 
@@ -61,7 +62,7 @@ export async function assertOfferReady(
 > {
   const { data: offer, error } = await supabase
     .from("offers")
-    .select("id, title, price_cents, status, caption")
+    .select("id, title, price_cents, status, caption, source")
     .eq("id", offerId)
     .maybeSingle();
   if (error) return { ok: false, error: error.message, status: 500 };
@@ -76,11 +77,26 @@ export async function assertOfferReady(
     };
   }
 
+  const { data: settings } = await supabase
+    .from("app_settings")
+    .select("default_affiliate_provider_id")
+    .eq("id", 1)
+    .maybeSingle();
+  const providerId = await resolveProviderId(
+    supabase,
+    offer.source,
+    settings?.default_affiliate_provider_id ?? null,
+  );
+
+  // O link precisa ser DO provider da fonte. Pegar só o mais recente aceitava
+  // link legado de outro provider (oferta ML saindo com URL longa em vez de
+  // meli.la), e a mensagem congela no job — emitir o certo depois não corrige.
   const { data: link, error: lerr } = await supabase
     .from("affiliate_links")
     .select("id, affiliate_url")
     .eq("offer_id", offerId)
     .eq("status", "ok")
+    .eq("provider_id", providerId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -88,7 +104,7 @@ export async function assertOfferReady(
   if (!link) {
     return {
       ok: false,
-      error: "Oferta sem link afiliado válido",
+      error: "Oferta sem link afiliado do provider da fonte",
       status: 400,
     };
   }

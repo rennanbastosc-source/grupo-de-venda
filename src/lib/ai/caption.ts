@@ -8,6 +8,23 @@ function mockCaption(title: string, price: string): string {
 }
 
 /**
+ * O prompt proíbe URLs, mas prompt é pedido, não garantia: o modelo já mandou
+ * link cru (sem afiliado) no meio da legenda, e a mensagem saiu com dois links.
+ * Corta a URL e a isca que a precede ("Corre:", "Garanta o seu agora:").
+ */
+export function stripUrls(text: string): string {
+  return text
+    .replace(/[^\s]*:\s*https?:\/\/\S+/gi, "")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .split("\n")
+    .map((l) => l.trimEnd())
+    .join("\n")
+    .trim();
+}
+
+/**
  * Gera legenda WhatsApp curta via 9router (OpenAI-compat).
  * SCRAPE_MOCK=1 → template fixo, sem rede.
  */
@@ -80,7 +97,7 @@ export async function generateCaption(input: {
     const data = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
     };
-    const text = data.choices?.[0]?.message?.content?.trim();
+    const text = stripUrls(data.choices?.[0]?.message?.content ?? "");
     if (!text) {
       throw new Error("9router retornou legenda vazia");
     }
