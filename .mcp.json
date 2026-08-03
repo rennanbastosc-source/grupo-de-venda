@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "codebase-memory": {
+      "command": "/home/rennanbastos/.nvm/versions/node/v24.18.1/bin/npx",
+      "args": ["-y", "@exaudeus/memory-mcp"],
+      "env": {
+        "MEMORY_MCP_REPO_ROOT": "/home/rennanbastos/Documentos/grupo-de-venda"
+      }
+    }
+  }
+}
