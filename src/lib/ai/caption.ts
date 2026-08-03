@@ -64,6 +64,9 @@ export async function generateCaption(input: {
           { role: "user", content: user },
         ],
         temperature: 0.7,
+        // provider novo do 9router streama por default — chunks concatenados
+        // quebram res.json(); pedimos resposta única explicitamente
+        stream: false,
       }),
     });
 
