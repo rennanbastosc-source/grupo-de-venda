@@ -289,7 +289,6 @@ export function OffersManager() {
               <option value="mercadolivre">Mercado Livre</option>
               <option value="amazon">Amazon</option>
               <option value="shopee">Shopee</option>
-              <option value="magalu">Magalu</option>
               <option value="manual">Manual</option>
             </select>
           </label>

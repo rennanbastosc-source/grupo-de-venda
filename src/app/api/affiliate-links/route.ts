@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/api-auth";
 import { emitAffiliateLink } from "@/lib/affiliates/emit";
+import { resolveProviderId } from "@/lib/affiliates/route-provider";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -35,9 +36,7 @@ export async function POST(request: Request) {
   const explicitProviderId =
     typeof body.providerId === "string" ? body.providerId.trim() : "";
 
-  // Sem provider explícito: roteia por source da oferta, igual ao pipeline
-  // (mercadolivre → provider ML; demais → generic-tag). Evita re-criar o bug
-  // "URL Invalid" ao emitir oferta amazon com provider ML manualmente.
+  // Sem provider explícito: mesma regra do pipeline/guards (route-provider).
   let providerId = explicitProviderId;
   if (!providerId && offerId) {
     const { data: offer } = await auth.supabase
@@ -46,25 +45,17 @@ export async function POST(request: Request) {
       .eq("id", offerId)
       .maybeSingle();
     if (offer) {
-      const slug =
-        offer.source === "mercadolivre" ? "mercadolivre" : "generic-tag";
-      const { data: prow } = await auth.supabase
-        .from("affiliate_providers")
-        .select("id")
-        .eq("slug", slug)
-        .eq("active", true)
+      const { data: settings } = await auth.supabase
+        .from("app_settings")
+        .select("default_affiliate_provider_id")
+        .eq("id", 1)
         .maybeSingle();
-      if (prow) {
-        providerId = prow.id;
-      } else {
-        // fallback: provider padrão do app
-        const { data: settings } = await auth.supabase
-          .from("app_settings")
-          .select("default_affiliate_provider_id")
-          .eq("id", 1)
-          .maybeSingle();
-        providerId = settings?.default_affiliate_provider_id ?? "";
-      }
+      const resolved = await resolveProviderId(
+        auth.supabase,
+        offer.source as string,
+        (settings?.default_affiliate_provider_id as string | null) ?? null,
+      );
+      providerId = resolved ?? "";
     }
   }
 
