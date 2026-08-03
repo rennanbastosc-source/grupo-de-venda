@@ -3,9 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = Record<string, unknown>;
 
-function makeClient(offers: Row[], settings: Row = {}) {
+function makeClient(offers: Row[], settings: Row = {}, linkFails: string[] = []) {
   const store = offers;
-  const stats = { settingsReads: 0 };
+  const stats = { settingsReads: 0, notArgs: [] as unknown[][] };
 
   const filterRows = (
     rows: Row[],
@@ -44,6 +44,11 @@ function makeClient(offers: Row[], settings: Row = {}) {
       filters.push({ col, op: "is", val });
       return self();
     };
+    chain.not = (...args: unknown[]) => {
+      stats.notArgs.push(args);
+      return self();
+    };
+    chain.gte = () => self();
     chain.order = () => self();
     chain.limit = (n: number) => {
       limitN = n;
@@ -105,6 +110,17 @@ function makeClient(offers: Row[], settings: Row = {}) {
         });
         return;
       }
+      // links com falha recente (head-of-line do ensureAffiliates)
+      if (
+        table === "affiliate_links" &&
+        filters.some((f) => f.val === "failed")
+      ) {
+        resolve({
+          data: linkFails.map((offer_id) => ({ offer_id })),
+          error: null,
+        });
+        return;
+      }
       resolve({ data: [], error: null });
     };
 
@@ -150,6 +166,23 @@ describe("runOfferPipeline", () => {
     expect(offer.caption_status).toBe("ready");
     expect(String(offer.caption)).toContain("Fone X");
     expect(String(offer.caption)).not.toContain("http");
+  });
+
+  it("exclui links com falha recente usando a sintaxe in.() do PostgREST", async () => {
+    vi.stubEnv("SCRAPE_MOCK", "1");
+    const alvo = "22222222-2222-4222-8222-222222222222";
+    const { client, stats } = makeClient(
+      [offerRow(3)],
+      { default_affiliate_provider_id: "prov-1" },
+      [alvo],
+    );
+    const { runOfferPipeline } = await import("@/lib/pipeline/run");
+    const r = await runOfferPipeline(client);
+
+    const filtro = stats.notArgs.find((a) => a[0] === "id");
+    // array cru vira `not.in.<uuid>` e o PostgREST recusa o filtro inteiro
+    expect(filtro?.[2]).toBe(`(${alvo})`);
+    expect(r.errors.filter((e) => e.startsWith("affiliate:"))).toHaveLength(0);
   });
 
   it("repesca caption_status failed e marca ready", async () => {

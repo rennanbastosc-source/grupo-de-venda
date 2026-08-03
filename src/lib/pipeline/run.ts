@@ -157,7 +157,11 @@ async function ensureAffiliates(
     .in("status", ["new", "approved"])
     .order("scraped_at", { ascending: true })
     .limit(cfg.batch);
-  if (failedOfferIds.length) q = q.not("id", "in", failedOfferIds);
+  // PostgREST exige a lista entre parênteses; array cru vira `not.in.<uuid>`
+  // e o filtro inteiro é recusado, derrubando a emissão de todos os links.
+  if (failedOfferIds.length) {
+    q = q.not("id", "in", `(${failedOfferIds.join(",")})`);
+  }
   const { data: offers, error } = await q;
 
   if (error) {
