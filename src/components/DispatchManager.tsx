@@ -1,45 +1,27 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import {
+  DispatchJobsTable,
+  type DispatchJobRow,
+} from "@/components/dispatch/DispatchJobsTable";
+import {
+  DispatchPipelineStatus,
+  type PipelineCounts,
+  type ScrapeRun,
+} from "@/components/dispatch/DispatchPipelineStatus";
+import {
+  DispatchSettingsForm,
+  type DispatchSettings,
+  type GroupOption,
+  type ProviderOption,
+} from "@/components/dispatch/DispatchSettingsForm";
 
 type Offer = { id: string; title: string; status: string };
-type Group = { id: string; name: string; active: boolean; jid: string };
-type Job = {
-  id: string;
-  status: string;
-  error: string | null;
-  created_at: string;
-  sent_at: string | null;
-  offers?: { title: string } | null;
-  wa_groups?: { name: string; jid: string } | null;
-};
-type Settings = {
-  daily_cap: number;
-  hourly_cap: number;
-  min_interval_sec: number;
-  daily_offer_cap: number;
-  message_template: string;
-  auto_dispatch_enabled: boolean;
-  auto_dispatch_group_ids: string[];
-  default_affiliate_provider_id: string | null;
-};
-type Provider = { id: string; name: string; active: boolean };
-type PipelineCounts = {
-  captionsPending: number;
-  captionsReady: number;
-  captionsFailed: number;
-  jobsQueued: number;
-  sentLast24h: number;
-};
-type ScrapeRun = {
-  source: string;
-  started_at: string;
-  finished_at: string | null;
-  ok: boolean;
-  items_found: number | null;
-  items_upserted: number | null;
-  error: string | null;
-};
+type Group = GroupOption;
+type Job = DispatchJobRow;
+type Settings = DispatchSettings;
+type Provider = ProviderOption;
 
 export function DispatchManager() {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -332,7 +314,6 @@ export function DispatchManager() {
     }
   }
 
-  const sessionOk = sessionStatus === "connected";
 
   return (
     <div className="space-y-6">
@@ -346,107 +327,13 @@ export function DispatchManager() {
         </a>
       </p>
 
-      {/* 1. Status do pipeline */}
-      <div className="border-[3px] border-ink bg-white p-4 shadow-brutal">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-black uppercase tracking-tight text-ink">
-            Status do pipeline
-          </h2>
-          <button
-            type="button"
-            onClick={() => void loadStatus()}
-            disabled={statusLoading}
-            className="b-btn b-btn-ghost !py-1.5"
-          >
-            {statusLoading ? "…" : "Atualizar"}
-          </button>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted">
-            WhatsApp
-          </span>
-          <span
-            className={
-              "border-[2px] border-ink px-2 py-0.5 text-xs font-black uppercase " +
-              (sessionOk
-                ? "bg-lime text-ink"
-                : "bg-danger text-white")
-            }
-          >
-            {sessionStatus}
-          </span>
-        </div>
-
-        {counts ? (
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {(
-              [
-                ["Captions pend.", counts.captionsPending],
-                ["Captions ok", counts.captionsReady],
-                ["Captions falha", counts.captionsFailed],
-                ["Jobs na fila", counts.jobsQueued],
-                ["Enviados 24h", counts.sentLast24h],
-              ] as const
-            ).map(([label, n]) => (
-              <div
-                key={label}
-                className="border-[2px] border-ink bg-[#fafaf5] px-2 py-2 text-center"
-              >
-                <div className="text-lg font-black tabular-nums text-ink">
-                  {n}
-                </div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                  {label}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="mt-4">
-          <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-muted">
-            Últimos scrapes
-          </h3>
-          {lastScrapeRuns.length === 0 ? (
-            <p className="mt-1 text-xs text-muted">Nenhum scrape ainda.</p>
-          ) : (
-            <ul className="mt-2 divide-y divide-[#e5e5dc] border-[2px] border-ink">
-              {lastScrapeRuns.map((r, i) => (
-                <li
-                  key={`${r.source}-${r.started_at}-${i}`}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5 text-xs"
-                >
-                  <span className="font-bold text-ink">{r.source}</span>
-                  <span
-                    className={
-                      r.ok ? "font-bold text-ok" : "font-bold text-danger"
-                    }
-                  >
-                    {r.ok ? "ok" : "falha"}
-                  </span>
-                  <span className="text-muted">
-                    found {r.items_found ?? 0} · up {r.items_upserted ?? 0}
-                  </span>
-                  <span className="font-mono text-muted">
-                    {r.started_at
-                      ? new Date(r.started_at).toLocaleString("pt-BR", {
-                          timeZone: "UTC",
-                        })
-                      : "—"}{" "}
-                    UTC
-                  </span>
-                  {r.error ? (
-                    <span className="w-full truncate text-danger font-bold">
-                      {r.error}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
+      <DispatchPipelineStatus
+        sessionStatus={sessionStatus}
+        counts={counts}
+        lastScrapeRuns={lastScrapeRuns}
+        statusLoading={statusLoading}
+        onRefresh={() => void loadStatus()}
+      />
 
       {/* 2. Ações manuais */}
       <div className="border-[3px] border-ink bg-white p-4 shadow-brutal">
@@ -517,150 +404,29 @@ export function DispatchManager() {
         </div>
       </div>
 
-      {/* 3. Configuração */}
-      <form
+      <DispatchSettingsForm
+        settings={settings}
+        groups={groups}
+        providers={providers}
+        offerCap={offerCap}
+        dailyCap={dailyCap}
+        hourlyCap={hourlyCap}
+        intervalSec={intervalSec}
+        messageTemplate={messageTemplate}
+        autoEnabled={autoEnabled}
+        autoGroupIds={autoGroupIds}
+        defaultProviderId={defaultProviderId}
+        busy={busy}
+        onOfferCap={setOfferCap}
+        onDailyCap={setDailyCap}
+        onHourlyCap={setHourlyCap}
+        onIntervalSec={setIntervalSec}
+        onMessageTemplate={setMessageTemplate}
+        onAutoEnabled={setAutoEnabled}
+        onToggleAutoGroup={toggleAutoGroup}
+        onDefaultProviderId={setDefaultProviderId}
         onSubmit={saveSettings}
-        className="grid gap-3 border-[3px] border-ink bg-white p-4 shadow-brutal sm:grid-cols-4"
-      >
-        <h2 className="text-sm font-black uppercase tracking-tight text-ink sm:col-span-4">
-          Rate limit
-          {settings ? (
-            <span className="ml-2 font-normal text-muted">
-              (atual: {settings.daily_offer_cap ?? 10} ofertas/dia ·{" "}
-              {settings.daily_cap} msgs/dia · {settings.hourly_cap}/h ·{" "}
-              {settings.min_interval_sec}s · horários em America/Fortaleza)
-            </span>
-          ) : null}
-        </h2>
-        <label className="block text-sm">
-          <span className="b-label">Ofertas/dia</span>
-          <input
-            type="number"
-            min={1}
-            value={offerCap}
-            onChange={(e) => setOfferCap(e.target.value)}
-            className="b-input"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="b-label">Daily cap</span>
-          <input
-            type="number"
-            min={1}
-            value={dailyCap}
-            onChange={(e) => setDailyCap(e.target.value)}
-            className="b-input"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="b-label">Hourly cap</span>
-          <input
-            type="number"
-            min={1}
-            value={hourlyCap}
-            onChange={(e) => setHourlyCap(e.target.value)}
-            className="b-input"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="b-label">Intervalo (s)</span>
-          <input
-            type="number"
-            min={1}
-            value={intervalSec}
-            onChange={(e) => setIntervalSec(e.target.value)}
-            className="b-input"
-          />
-        </label>
-
-        <div className="sm:col-span-3 border-t-[3px] border-ink pt-3 grid gap-2">
-          <h2 className="text-sm font-black uppercase tracking-tight text-ink">
-            Template da mensagem
-          </h2>
-          <p className="text-xs text-muted">
-            Obrigatório:{" "}
-            <code className="font-mono font-bold text-ink">
-              {"{{affiliate_url}}"}
-            </code>
-          </p>
-          <label className="block text-sm">
-            <span className="sr-only">Template</span>
-            <textarea
-              value={messageTemplate}
-              onChange={(e) => setMessageTemplate(e.target.value)}
-              rows={5}
-              className="b-input font-mono text-sm text-ink"
-              placeholder={"Oferta: {{title}}\n{{affiliate_url}}"}
-            />
-          </label>
-        </div>
-
-        <div className="sm:col-span-3 border-t-[3px] border-ink pt-3 grid gap-3">
-          <h2 className="text-sm font-black uppercase tracking-tight text-ink">
-            Auto-dispatch
-          </h2>
-          <p className="text-xs text-muted">
-            Enfileira ofertas com legenda pronta nos grupos marcados.
-          </p>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={autoEnabled}
-              onChange={(e) => setAutoEnabled(e.target.checked)}
-            />
-            <span className="font-bold">Auto-dispatch</span>
-          </label>
-          <fieldset className="text-sm">
-            <legend className="b-label">Grupos (auto)</legend>
-            <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
-              {groups.length === 0 ? (
-                <p className="text-muted">Nenhum grupo ativo.</p>
-              ) : (
-                groups.map((g) => (
-                  <label key={g.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={autoGroupIds.includes(g.id)}
-                      onChange={() => toggleAutoGroup(g.id)}
-                    />
-                    <span>
-                      {g.name}{" "}
-                      <span className="font-mono text-xs text-muted">
-                        {g.jid}
-                      </span>
-                    </span>
-                  </label>
-                ))
-              )}
-            </div>
-          </fieldset>
-          {providers ? (
-            <label className="block text-sm">
-              <span className="b-label">Provider padrão</span>
-              <select
-                value={defaultProviderId}
-                onChange={(e) => setDefaultProviderId(e.target.value)}
-                className="b-input"
-              >
-                <option value="">Nenhum</option>
-                {providers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-        </div>
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-fit b-btn b-btn-ghost sm:col-span-3"
-        >
-          Salvar
-        </button>
-      </form>
+      />
 
       {/* 4. Enfileirar manual */}
       <form
@@ -764,109 +530,19 @@ export function DispatchManager() {
         </p>
       ) : null}
 
-      {/* 6. Histórico */}
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          <span className="b-label">Status</span>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="b-input !mt-1 !w-auto"
-          >
-            <option value="">Todos</option>
-            <option value="queued">queued</option>
-            <option value="sending">sending</option>
-            <option value="sent">sent</option>
-            <option value="failed">failed</option>
-            <option value="skipped">skipped</option>
-          </select>
-        </label>
-        <label className="text-sm">
-          <span className="b-label">Desde (UTC)</span>
-          <input
-            type="date"
-            value={filterFrom}
-            onChange={(e) => setFilterFrom(e.target.value)}
-            className="b-input !mt-1 !w-auto"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="b-btn b-btn-ghost !py-1.5"
-        >
-          Atualizar histórico
-        </button>
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-muted">Carregando jobs…</p>
-      ) : jobs.length === 0 ? (
-        <p className="text-sm text-muted">Fila vazia.</p>
-      ) : (
-        <div className="overflow-x-auto border-[3px] border-ink bg-white shadow-brutal">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b-2 border-ink bg-lime text-ink">
-              <tr>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">
-                  Oferta
-                </th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">
-                  Grupo
-                </th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider">
-                  Erro
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((j) => (
-                <tr key={j.id} className="border-b border-[#e5e5dc]">
-                  <td className="px-3 py-2">
-                    {j.offers?.title ?? j.id.slice(0, 8)}
-                  </td>
-                  <td className="px-3 py-2">{j.wa_groups?.name ?? "—"}</td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={
-                        j.status === "sent"
-                          ? "text-ok"
-                          : j.status === "failed"
-                            ? "text-danger font-bold"
-                            : "text-ink-soft"
-                      }
-                    >
-                      {j.status}
-                    </span>
-                  </td>
-                  <td className="max-w-xs px-3 py-2 text-xs text-danger font-bold">
-                    {j.error ? (
-                      <button
-                        type="button"
-                        className="text-left font-bold underline decoration-2 underline-offset-2"
-                        onClick={() =>
-                          setExpandedError((cur) =>
-                            cur === j.id ? null : j.id,
-                          )
-                        }
-                      >
-                        {expandedError === j.id
-                          ? j.error
-                          : j.error.length > 48
-                            ? `${j.error.slice(0, 48)}…`
-                            : j.error}
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DispatchJobsTable
+        jobs={jobs}
+        loading={loading}
+        filterStatus={filterStatus}
+        filterFrom={filterFrom}
+        expandedError={expandedError}
+        onFilterStatus={setFilterStatus}
+        onFilterFrom={setFilterFrom}
+        onRefresh={() => void load()}
+        onToggleError={(id) =>
+          setExpandedError((cur) => (cur === id ? null : id))
+        }
+      />
     </div>
   );
 }
