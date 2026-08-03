@@ -1,5 +1,20 @@
 {
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDECODE=1 bash \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/scripts/assert-agent-host.sh\" || true",
+            "timeout": 10,
+            "statusMessage": "Validando harness Claude (superpowers)..."
+          }
+        ]
+      }
+    ]
   }
 }
