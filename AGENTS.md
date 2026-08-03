@@ -108,7 +108,7 @@ Regra de precedência **dentro do host ativo:** process skill / SDD primeiro, im
 O que NÃO muda com isso:
 
 - **Validação continua sendo pré-requisito, não formalidade.** Nada é commitado sem tsc + lint + testes verdes (regra de entrega no `AGENTS.md`); nenhuma PR é mergeada sem o loop de escopo Feature verde. A skill autoriza o git, não dispensa o portão.
-- **Merge exige o schema JÁ aplicado na produção.** Push em `master` é deploy imediato: mergear com migração aditiva só na staging põe no ar código que lê coluna inexistente. Antes do merge: `assert-db-env.sh production` → `db push` → `migrate diff` vazio. Isso é gate técnico, não de permissão — nenhuma skill o dispensa.
+- **Merge exige o schema JÁ aplicado na produção.** Push em `main` é deploy imediato: mergear com migração aditiva só na staging põe no ar código que lê coluna inexistente. Ordem: `bash scripts/assert-db-env.sh staging --push` (validar preview) → `bash scripts/assert-db-env.sh production --push` → merge/deploy. Detalhe: `docs/runbooks/staging-preview.md`.
 - **Operação de escrita direta no banco de produção segue exigindo pedido explícito** (§8). Skill não cobre isso.
 - **Push em `master` = deploy imediato** — agrupe commits pequenos (docs, ajustes) num push só quando possível.
 - Mensagens: conventional commits em PT-BR (`fix:`, `feat:`, `docs:`), corpo explicando o porquê.
@@ -119,6 +119,17 @@ O que NÃO muda com isso:
 |------|------|
 | **App (Vercel)** | Auto-deploy Git **desligado** (`vercel.json`). CI job `Deploy Vercel (pós-CI)`: `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`. |
 | **Worker (Render)** | Blueprint `render.yaml`, `rootDir: worker`, `autoDeploy: true`. GitHub App precisa de acesso ao repo (log limpo: `Cloning from…` **sem** “don't have access”). |
+
+### 6.1 Staging vs production (banco)
+
+| Env Vercel | Supabase | `SCRAPE_MOCK` |
+|---|---|---|
+| **Production** | `fyotfffqjrtxwfupzhij` (`grupo-de-venda`) | off |
+| **Preview + Development** | `ojnxywrzeouyzowcgmoe` (staging) | `1` |
+
+- `supabase link` no repo = **sempre production**. Staging via `scripts/assert-db-env.sh staging --push` (workdir isolado).
+- Runbook: `docs/runbooks/staging-preview.md`.
+- Worker ainda é o de prod em todos os envs — não disparar fila real a partir de preview.
 
 - Push que só mexe fora de `worker/` **não** redeploya o worker (`rootDir`).
 - Render ≠ Vercel: CI Actions não controla o worker.
