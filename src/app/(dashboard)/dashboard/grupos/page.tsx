@@ -1,5 +1,5 @@
 import { GroupsManager } from "@/components/GroupsManager";
-import { SessionPanel } from "@/components/SessionPanel";
+import Link from "next/link";
 
 export default function GruposPage() {
   return (
@@ -10,10 +10,16 @@ export default function GruposPage() {
           Grupos WhatsApp
         </h1>
         <p className="mt-0.5 text-sm font-medium text-muted">
-          Cadastro de grupos autorizados e status da sessão Baileys.
+          Cadastro de grupos autorizados. Sessão e pareamento ficam em{" "}
+          <Link
+            href="/dashboard/bot"
+            className="font-extrabold text-ink underline decoration-2 underline-offset-2"
+          >
+            Bot
+          </Link>
+          .
         </p>
       </div>
-      <SessionPanel />
       <GroupsManager />
     </div>
   );
