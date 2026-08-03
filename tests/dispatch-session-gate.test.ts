@@ -34,14 +34,28 @@ describe("processDispatchQueue session gate", () => {
   });
 
   it("stoppedReason explícito e zero sends se desconectado", async () => {
-    vi.mocked(workerFetch).mockResolvedValue({
-      ok: true,
-      data: { status: "disconnected" },
+    vi.mocked(workerFetch).mockImplementation(async (path: string) => {
+      if (path === "/health") {
+        return {
+          ok: true,
+          data: { ok: true, sessionStatus: "disconnected" },
+        } as never;
+      }
+      if (path === "/session/start") {
+        return { ok: true, data: { ok: true } } as never;
+      }
+      return {
+        ok: true,
+        data: { status: "disconnected" },
+      } as never;
     });
-    const r = await processDispatchQueue(emptySupabase(), { maxJobs: 3 });
+    const r = await processDispatchQueue(emptySupabase(), {
+      maxJobs: 3,
+      sleepFn: async () => {},
+    });
     expect(r.sent).toBe(0);
     expect(r.processed).toBe(0);
-    expect(r.stoppedReason).toMatch(/dashboard\/bot/i);
+    expect(r.stoppedReason).toMatch(/dashboard\/bot|WhatsApp/i);
   });
 
   it("worker offline mensagem clara", async () => {
@@ -49,8 +63,10 @@ describe("processDispatchQueue session gate", () => {
       ok: false,
       error: "ECONNREFUSED",
       status: 503,
+    } as never);
+    const r = await processDispatchQueue(emptySupabase(), {
+      sleepFn: async () => {},
     });
-    const r = await processDispatchQueue(emptySupabase());
     expect(r.sent).toBe(0);
     expect(r.stoppedReason).toMatch(/Worker inacessível/i);
   });

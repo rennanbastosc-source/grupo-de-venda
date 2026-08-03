@@ -100,7 +100,13 @@ export function OverviewDashboard() {
       {stats && stats.sessionStatus !== "connected" ? (
         <p className="b-alert b-alert-danger" role="alert">
           <AlertTriangle className="mr-1 inline h-4 w-4" strokeWidth={2.5} />
-          Sessão WhatsApp: {stats.sessionStatus}. Disparos bloqueados.{" "}
+          Sessão WhatsApp: {stats.sessionStatus}
+          {!stats.workerHealthOk ? " · worker offline (health)" : ""}. Disparos
+          bloqueados
+          {stats.sessionLastError
+            ? ` — ${stats.sessionLastError.slice(0, 120)}`
+            : ""}
+          .{" "}
           <a
             href="/dashboard/bot"
             className="font-extrabold underline decoration-2 underline-offset-2"
@@ -151,9 +157,22 @@ export function OverviewDashboard() {
               hint={
                 stats.sessionStatus === "connected"
                   ? "Pronto para disparar"
-                  : "Ação em Bot"
+                  : stats.sessionLastError
+                    ? stats.sessionLastError.slice(0, 80)
+                    : "Ação em Bot"
               }
               icon={Wifi}
+            />
+            <KpiCard
+              label="Worker health"
+              value={stats.workerHealthOk ? "ok" : "down"}
+              alert={!stats.workerHealthOk}
+              hint={
+                stats.workerHealthOk
+                  ? "GET /health respondeu"
+                  : (stats.sessionLastError?.slice(0, 80) ?? "Render 502/offline")
+              }
+              icon={Radio}
             />
             <KpiCard
               label="Último erro scrap"

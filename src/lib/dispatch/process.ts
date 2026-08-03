@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { workerFetch } from "@/lib/worker-client";
+import { wakeWorkerAndEnsureSession } from "@/lib/worker-keepalive";
 import { canSendNow, dayStartInTz, type RateSettings } from "./rate-limit";
 
 export type ProcessResult = {
@@ -137,12 +138,24 @@ export async function processDispatchQueue(
     skipped: 0,
   };
 
-  const session = await workerFetch<{ status: string }>("/session");
-  if (!session.ok || session.data.status !== "connected") {
-    result.stoppedReason = session.ok
-      ? "WhatsApp desconectado — reconecte em /dashboard/bot"
-      : `Worker inacessível — ${session.error}`;
+  // Render free: tenta acordar worker + /session/start antes de desistir
+  const wake = await wakeWorkerAndEnsureSession({
+    tries: 3,
+    gapMs: 2_000,
+    sleepFn: sleep,
+  });
+  if (!wake.healthOk) {
+    result.stoppedReason = `Worker inacessível — ${wake.lastError ?? "health fail"}`;
     return result;
+  }
+  if (wake.sessionStatus !== "connected") {
+    const session = await workerFetch<{ status: string }>("/session");
+    if (!session.ok || session.data.status !== "connected") {
+      result.stoppedReason = session.ok
+        ? `WhatsApp ${session.data.status} — reconecte em /dashboard/bot`
+        : `Worker inacessível — ${session.error}`;
+      return result;
+    }
   }
 
   await reapStuckJobs(supabase, clock());

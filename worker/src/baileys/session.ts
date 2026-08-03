@@ -98,7 +98,15 @@ export function setSessionStatus(
     }
   }
   // só transições reais viram evento (reconexão em loop não vira ruído)
-  if (changed) logConnectionEvent(status, state.lastError);
+  if (changed) {
+    const detail = state.lastError
+      ? state.lastError.slice(0, 300)
+      : null;
+    console.log(
+      `[worker] session ${status}${detail ? ` — ${detail}` : ""}`,
+    );
+    logConnectionEvent(status, detail);
+  }
 }
 
 export function clearQr() {

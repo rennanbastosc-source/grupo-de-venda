@@ -40,7 +40,15 @@ export function createWorkerServer() {
     const method = req.method || "GET";
 
     if (url.pathname === "/health") {
-      return json(res, 200, { ok: true });
+      // ok=true = processo vivo (Render healthCheck). Sessão é campo extra.
+      const s = getSessionState();
+      return json(res, 200, {
+        ok: true,
+        sessionStatus: s.status,
+        phone: s.phone,
+        lastError: s.lastError,
+        uptimeSec: Math.floor(process.uptime()),
+      });
     }
 
     if (!requireWorkerSecret(req, res)) return;

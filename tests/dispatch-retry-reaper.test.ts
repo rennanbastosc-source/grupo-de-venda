@@ -79,8 +79,17 @@ describe("retry com backoff", () => {
   beforeEach(() => {
     vi.mocked(workerFetch).mockReset();
     vi.mocked(workerFetch).mockImplementation(async (path: string) => {
+      if (path === "/health") {
+        return {
+          ok: true,
+          data: { ok: true, sessionStatus: "connected" },
+        } as never;
+      }
       if (path === "/session") {
         return { ok: true, data: { status: "connected" } } as never;
+      }
+      if (path === "/session/start") {
+        return { ok: true, data: { ok: true } } as never;
       }
       return { ok: false, error: "boom", status: 500 } as never;
     });
@@ -122,10 +131,18 @@ describe("retry com backoff", () => {
 describe("reaper de sending preso", () => {
   it("resgata pra queued com attempts+1", async () => {
     vi.mocked(workerFetch).mockReset();
-    vi.mocked(workerFetch).mockResolvedValue({
-      ok: true,
-      data: { status: "connected" },
-    } as never);
+    vi.mocked(workerFetch).mockImplementation(async (path: string) => {
+      if (path === "/health") {
+        return {
+          ok: true,
+          data: { ok: true, sessionStatus: "connected" },
+        } as never;
+      }
+      if (path === "/session") {
+        return { ok: true, data: { status: "connected" } } as never;
+      }
+      return { ok: true, data: { ok: true } } as never;
+    });
     const updates: {
       table: string;
       payload: Record<string, unknown>;
@@ -152,10 +169,18 @@ describe("reaper de sending preso", () => {
 
   it("stuck no teto de tentativas vira failed em vez de voltar pra fila", async () => {
     vi.mocked(workerFetch).mockReset();
-    vi.mocked(workerFetch).mockResolvedValue({
-      ok: true,
-      data: { status: "connected" },
-    } as never);
+    vi.mocked(workerFetch).mockImplementation(async (path: string) => {
+      if (path === "/health") {
+        return {
+          ok: true,
+          data: { ok: true, sessionStatus: "connected" },
+        } as never;
+      }
+      if (path === "/session") {
+        return { ok: true, data: { status: "connected" } } as never;
+      }
+      return { ok: true, data: { ok: true } } as never;
+    });
     const updates: {
       table: string;
       payload: Record<string, unknown>;
@@ -179,8 +204,17 @@ describe("índice único recusa marcar sent", () => {
   it("vira skipped em vez de ficar preso em sending", async () => {
     vi.mocked(workerFetch).mockReset();
     vi.mocked(workerFetch).mockImplementation(async (path: string) => {
+      if (path === "/health") {
+        return {
+          ok: true,
+          data: { ok: true, sessionStatus: "connected" },
+        } as never;
+      }
       if (path === "/session") {
         return { ok: true, data: { status: "connected" } } as never;
+      }
+      if (path === "/session/start") {
+        return { ok: true, data: { ok: true } } as never;
       }
       return { ok: true, data: { ok: true, deduped: true } } as never;
     });
@@ -215,8 +249,17 @@ describe("deduped do worker", () => {
   it("marca sent sem consumir rate limit", async () => {
     vi.mocked(workerFetch).mockReset();
     vi.mocked(workerFetch).mockImplementation(async (path: string) => {
+      if (path === "/health") {
+        return {
+          ok: true,
+          data: { ok: true, sessionStatus: "connected" },
+        } as never;
+      }
       if (path === "/session") {
         return { ok: true, data: { status: "connected" } } as never;
+      }
+      if (path === "/session/start") {
+        return { ok: true, data: { ok: true } } as never;
       }
       return {
         ok: true,

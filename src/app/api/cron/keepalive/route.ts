@@ -1,41 +1,55 @@
 import { assertCronSecret } from "@/lib/cron-auth";
+import { wakeWorkerAndEnsureSession } from "@/lib/worker-keepalive";
 import { NextResponse } from "next/server";
 
 /**
- * Keepalive do 9router (plano free da Render dorme após ~15min e perde
- * o sqlite no wake). Pinga o endpoint a cada 5 min via cron Vercel.
+ * Keepalive: 9router (IA) + worker Baileys (Render free).
+ * Worker: GET /health com retry → se acordou e sessão ≠ connected, POST /session/start.
  */
 export async function GET(request: Request) {
   const denied = assertCronSecret(request);
   if (denied) return denied;
 
-  const base = process.env.NINE_ROUTER_BASE_URL;
-  if (!base) {
-    return NextResponse.json({ ok: true, skipped: "sem NINE_ROUTER_BASE_URL" });
-  }
+  const nineBase = process.env.NINE_ROUTER_BASE_URL;
+  let nine: { ok: boolean; status?: number; error?: string; skipped?: string } =
+    { ok: true, skipped: "sem NINE_ROUTER_BASE_URL" };
 
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20_000);
-    const res = await fetch(`${base}/models`, {
-      signal: ctrl.signal,
+  if (nineBase) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 20_000);
+      const res = await fetch(`${nineBase.replace(/\/$/, "")}/models`, {
+        signal: ctrl.signal,
+        cache: "no-store",
+      });
+      clearTimeout(timer);
       // 401 é ok — o serviço respondeu (acordado)
-      cache: "no-store",
-    });
-    clearTimeout(timer);
-    return NextResponse.json({
-      ok: true,
-      status: res.status,
-    });
-  } catch (e) {
-    return NextResponse.json(
-      {
+      nine = { ok: true, status: res.status };
+    } catch (e) {
+      nine = {
         ok: false,
         error: e instanceof Error ? e.message : String(e),
-      },
-      { status: 502 },
-    );
+      };
+    }
   }
+
+  const worker = await wakeWorkerAndEnsureSession();
+
+  const ok = nine.ok && worker.healthOk;
+  return NextResponse.json(
+    {
+      ok,
+      nine,
+      worker: {
+        healthOk: worker.healthOk,
+        attempts: worker.attempts,
+        sessionStatus: worker.sessionStatus,
+        started: worker.started,
+        lastError: worker.lastError,
+      },
+    },
+    { status: ok ? 200 : 502 },
+  );
 }
 
 export async function POST(request: Request) {

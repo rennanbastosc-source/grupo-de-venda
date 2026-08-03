@@ -95,6 +95,12 @@ function burstHandler(opts: {
 function mockConnectedSendOk() {
   vi.mocked(workerFetch).mockReset();
   vi.mocked(workerFetch).mockImplementation(async (path: string) => {
+    if (path === "/health") {
+      return {
+        ok: true,
+        data: { ok: true, sessionStatus: "connected" },
+      } as never;
+    }
     if (path === "/session") {
       return { ok: true, data: { status: "connected" } } as never;
     }

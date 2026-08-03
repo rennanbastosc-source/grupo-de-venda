@@ -190,14 +190,21 @@ async function handleConnectionUpdate(
     return;
   }
 
-  if (pendingPairingPhone !== null || code === DisconnectReason.timedOut) {
+  // Pareamento incompleto (sem account): volta a waiting_pairing.
+  // Timeout COM account era o flap: forçava waiting_pairing + poll e
+  // o dashboard/cron viam "precisa parear" com sessão válida no disco.
+  const hasAccount = Boolean(authBundle?.state.creds.account);
+  if (pendingPairingPhone !== null || (!hasAccount && code === DisconnectReason.timedOut)) {
     pendingPairingPhone = null;
     resumingPairing = false;
     await discardIncompleteAuth();
     setSessionStatus("waiting_pairing", {
       qrDataUrl: null,
       pairingCode: null,
-      lastError: null,
+      lastError:
+        code === DisconnectReason.timedOut
+          ? "timeout no pareamento"
+          : null,
     });
     schedule(PAIRING_POLL_MS);
     return;
@@ -207,8 +214,11 @@ async function handleConnectionUpdate(
     lastDisconnect?.error instanceof Error
       ? lastDisconnect.error.message
       : "conexão fechada";
+  const detail =
+    code != null ? `${msg} (code=${code})` : msg;
+  console.warn("[worker] connection close", { code, hasAccount, detail });
   setSessionStatus("disconnected", {
-    lastError: msg,
+    lastError: detail.slice(0, 300),
     qrDataUrl: null,
   });
   scheduleReconnect();
