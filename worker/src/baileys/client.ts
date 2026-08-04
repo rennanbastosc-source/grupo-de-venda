@@ -9,6 +9,8 @@ import makeWASocket, {
   isJidBroadcast,
   isJidGroup,
   isJidNewsletter,
+  isJidUser,
+  isLidUser,
   type WASocket,
   type ConnectionState,
 } from "@whiskeysockets/baileys";
@@ -278,11 +280,16 @@ export async function startBaileys() {
       markOnlineOnConnect: false,
       syncFullHistory: false,
       qrTimeout: 60_000,
-      // Send-only: não decrypta inbound de grupo/status/newsletter.
+      // Send-only: não decrypta inbound. Bad MAC em log vinha de LID 1:1
+      // (ex. 4041564225646.0), não só de @g.us — por isso ignora user/LID também.
       // Outbound POST /send (sendMessage) não passa por shouldIgnoreJid.
       shouldIgnoreJid: (jid) =>
         Boolean(
-          isJidGroup(jid) || isJidBroadcast(jid) || isJidNewsletter(jid),
+          isJidGroup(jid) ||
+            isJidBroadcast(jid) ||
+            isJidNewsletter(jid) ||
+            isJidUser(jid) ||
+            isLidUser(jid),
         ),
     });
 
