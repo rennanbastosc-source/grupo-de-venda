@@ -18,6 +18,7 @@ async function fetchOffers(): Promise<RawOffer[]> {
         title: "Mock Amazon Oferta",
         url: "https://www.amazon.com.br/dp/B0MOCKASIN",
         priceCents: 14990,
+        coupon: "TESTCUPOM",
         externalId: "B0MOCKASIN",
       },
     ];

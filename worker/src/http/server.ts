@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { getUrlInfo } from "@whiskeysockets/baileys";
 import { requireWorkerSecret } from "../auth.js";
 import {
   getSessionState,
@@ -170,7 +171,16 @@ export function createWorkerServer() {
         return json(res, 503, { error: "socket indisponível" });
       }
       try {
-        await socket.sendMessage(jid, { text });
+        // HQ link preview: first URL in text; fail-open se OG falhar
+        const linkPreview = await getUrlInfo(text, {
+          thumbnailWidth: 192,
+          fetchOpts: { timeout: 5000 },
+        }).catch(() => undefined);
+
+        await socket.sendMessage(jid, {
+          text,
+          linkPreview: linkPreview ?? null,
+        });
         if (body.jobId) {
           sentJobIds.add(body.jobId);
           // Best-effort: a mensagem já saiu; falhar aqui não pode virar 500

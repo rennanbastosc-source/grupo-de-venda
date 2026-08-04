@@ -15,7 +15,7 @@ describe("generateCaption", () => {
       price: "R$ 10,00",
       url: "https://ex.com/x",
     });
-    expect(text).toContain("Fone X");
+    expect(text).toContain("URUBU");
     expect(text).not.toContain("http");
   });
 
@@ -43,19 +43,20 @@ describe("generateCaption", () => {
     expect(url).toBe("http://router.test/v1/chat/completions");
     const body = JSON.parse(String(init.body));
     expect(body.model).toBe("GeMiNi");
+    expect(body.temperature).toBe(0.85);
     const system = body.messages[0].content as string;
-    expect(system).toMatch(/EXATAMENTE/);
-    expect(system).toContain("R$ 10,00");
-    expect(system).toMatch(/280/);
+    expect(system).toMatch(/70/);
+    expect(system).toMatch(/MAIÚSCULAS/);
+    expect(system).toMatch(/PROIBIDO: NÃO mencione preço/);
   });
 
-  it("sem preço válido: system proíbe inventar R$", async () => {
+  it("sem preço válido: system proíbe mencionar preço", async () => {
     vi.stubEnv("SCRAPE_MOCK", "");
     vi.stubEnv("NINE_ROUTER_BASE_URL", "http://router.test/v1");
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        choices: [{ message: { content: "Achado sem preço na copy" } }],
+        choices: [{ message: { content: "GANCHO DO URUBU" } }],
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -69,8 +70,7 @@ describe("generateCaption", () => {
       String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body),
     );
     const system = body.messages[0].content as string;
-    expect(system).toMatch(/NÃO mencione valor em R\$/);
-    expect(system).not.toMatch(/EXATAMENTE/);
+    expect(system).toMatch(/PROIBIDO: NÃO mencione preço/);
   });
 });
 

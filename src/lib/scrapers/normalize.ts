@@ -182,3 +182,45 @@ export function parsePricesFromText(text: string): {
 export function parsePriceToCents(text: string): number | undefined {
   return parsePricesFromText(text).priceCents;
 }
+
+const COUPON_STOPWORDS = new Set([
+  "AQUI",
+  "NAO",
+  "NÃO",
+  "MAIS",
+  "PARA",
+  "COM",
+  "SEM",
+  "DESCONTO",
+  "VALIDO",
+  "VÁLIDO",
+  "APLICADO",
+  "DISPONIVEL",
+  "DISPONÍVEL",
+  "FISCAL",
+  "MANUAL",
+  "SITE",
+  "LOJA",
+  "ABAIXO",
+]);
+
+export function parseCouponFromText(text: string): string | undefined {
+  if (!text) return undefined;
+  const re =
+    /(?:cupom|código|codigo)(?:\s+de\s+desconto)?\s*:\s*([A-Z0-9-]{3,24})|(?:cupom|código|codigo)(?:\s+de\s+desconto)?\s+([A-Z0-9-]{3,24})/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const raw = (m[1] ?? m[2] ?? "").trim();
+    if (!raw) continue;
+    const code = raw.toUpperCase();
+    if (
+      code.length >= 3 &&
+      code.length <= 24 &&
+      !/^\d+$/.test(code) &&
+      !COUPON_STOPWORDS.has(code)
+    ) {
+      return code;
+    }
+  }
+  return undefined;
+}

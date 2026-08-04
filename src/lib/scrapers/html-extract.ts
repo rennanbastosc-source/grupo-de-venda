@@ -1,5 +1,5 @@
 import type { RawOffer } from "./types";
-import { parsePricesFromText } from "./normalize";
+import { parseCouponFromText, parsePricesFromText } from "./normalize";
 
 export type ExtractOpts = {
   hostIncludes: string;
@@ -53,8 +53,10 @@ export function enrichMissingPrices(
 ): RawOffer[] {
   if (!html || offers.length === 0) return offers;
   return offers.map((o) => {
-    if (o.priceCents != null) return o;
-    let best: { priceCents?: number; originalPriceCents?: number } = {};
+    let priceCents = o.priceCents;
+    let originalPriceCents = o.originalPriceCents;
+    let coupon = o.coupon;
+
     for (const key of hrefSearchKeys(o.url, baseUrl)) {
       let from = 0;
       // até 3 ocorrências do mesmo href (título + preço + imagem)
@@ -63,20 +65,32 @@ export function enrichMissingPrices(
         if (pos < 0) break;
         const start = Math.max(0, pos - 120);
         const windowHtml = html.slice(start, pos + 1600);
-        const parsed = parsePricesFromText(stripTags(windowHtml));
-        if (parsed.priceCents != null) {
-          best = parsed;
-          break;
+        const text = stripTags(windowHtml);
+        if (priceCents == null) {
+          const parsed = parsePricesFromText(text);
+          if (parsed.priceCents != null) {
+            priceCents = parsed.priceCents;
+            if (parsed.originalPriceCents != null) {
+              originalPriceCents = parsed.originalPriceCents;
+            }
+          }
         }
+        if (!coupon) {
+          coupon = parseCouponFromText(text);
+        }
+        if (priceCents != null && coupon != null) break;
         from = pos + key.length;
       }
-      if (best.priceCents != null) break;
+      if (priceCents != null && coupon != null) break;
     }
-    if (best.priceCents == null) return o;
+    if (priceCents === o.priceCents && originalPriceCents === o.originalPriceCents && coupon === o.coupon) {
+      return o;
+    }
     return {
       ...o,
-      priceCents: best.priceCents,
-      originalPriceCents: best.originalPriceCents ?? o.originalPriceCents,
+      priceCents: priceCents ?? o.priceCents,
+      originalPriceCents: originalPriceCents ?? o.originalPriceCents,
+      coupon: coupon ?? o.coupon,
     };
   });
 }
@@ -120,6 +134,9 @@ export function extractOffersFromHtml(
             }
           }
         }
+        if (!existing.coupon) {
+          existing.coupon = parseCouponFromText(inner);
+        }
         if (isWeakTitle(existing.title)) {
           existing.title = cleanTitle(inner.slice(0, 200), href).slice(0, 240);
         }
@@ -130,17 +147,24 @@ export function extractOffersFromHtml(
 
     const title = cleanTitle(inner.slice(0, 200), href).slice(0, 240);
     const { priceCents, originalPriceCents } = parsePricesFromText(inner);
-    const offer: RawOffer = { title, url: href, priceCents, originalPriceCents };
+    const coupon = parseCouponFromText(inner);
+    const offer: RawOffer = { title, url: href, priceCents, originalPriceCents, coupon };
 
-    // Preço costuma ficar fora do `<a>` (DIV separado com spans em ML/Shopee)
-    if (offer.priceCents == null) {
+    // Preço ou cupom costuma ficar fora do `<a>` (DIV separado com spans em ML/Shopee)
+    if (offer.priceCents == null || !offer.coupon) {
       const windowHtml = neighborWindow(html, m.index + m[0].length);
-      const neighborPrices = parsePricesFromText(stripTags(windowHtml));
-      if (neighborPrices.priceCents != null) {
-        offer.priceCents = neighborPrices.priceCents;
-        if (neighborPrices.originalPriceCents != null) {
-          offer.originalPriceCents = neighborPrices.originalPriceCents;
+      const text = stripTags(windowHtml);
+      if (offer.priceCents == null) {
+        const neighborPrices = parsePricesFromText(text);
+        if (neighborPrices.priceCents != null) {
+          offer.priceCents = neighborPrices.priceCents;
+          if (neighborPrices.originalPriceCents != null) {
+            offer.originalPriceCents = neighborPrices.originalPriceCents;
+          }
         }
+      }
+      if (!offer.coupon) {
+        offer.coupon = parseCouponFromText(text);
       }
     }
 

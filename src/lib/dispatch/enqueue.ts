@@ -5,7 +5,12 @@ import {
   assertSessionConnected,
   hasDispatchToday,
 } from "./guards";
-import { buildMessage, formatPriceCents } from "./template";
+import {
+  buildMessage,
+  couponLine,
+  formatPriceCents,
+  formatPriceLine,
+} from "./template";
 
 export type EnqueueResult = {
   created: { id: string; groupId: string }[];
@@ -44,12 +49,15 @@ export async function enqueueDispatch(
 
   const template =
     settings?.message_template ??
-    "{{caption}}\n\n🔗 {{affiliate_url}}";
+    "🔥 {{caption}}\n\n{{title}}\n\n{{coupon_line}}\npor {{price_line}}\n{{affiliate_url}}";
   const message_body = buildMessage(template, {
     title: offer.title,
     price: formatPriceCents(offer.price_cents),
     affiliate_url: offer.affiliate_url,
     caption: offer.caption ?? "",
+    coupon: offer.coupon ?? "",
+    coupon_line: couponLine(offer.coupon),
+    price_line: formatPriceLine(offer.price_cents),
   });
 
   const created: EnqueueResult["created"] = [];

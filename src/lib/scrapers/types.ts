@@ -14,6 +14,7 @@ export type RawOffer = {
   originalPriceCents?: number;
   imageUrl?: string;
   externalId?: string;
+  coupon?: string;
 };
 
 export type NormalizedOffer = RawOffer & {

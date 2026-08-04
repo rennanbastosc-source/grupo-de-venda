@@ -58,11 +58,12 @@ export async function assertOfferReady(
       affiliate_link_id: string;
       affiliate_url: string;
       caption: string | null;
+      coupon: string | null;
     }
 > {
   const { data: offer, error } = await supabase
     .from("offers")
-    .select("id, title, price_cents, status, caption, source")
+    .select("id, title, price_cents, status, caption, coupon, source")
     .eq("id", offerId)
     .maybeSingle();
   if (error) return { ok: false, error: error.message, status: 500 };
@@ -116,6 +117,7 @@ export async function assertOfferReady(
     affiliate_link_id: link.id,
     affiliate_url: link.affiliate_url,
     caption: offer.caption ?? null,
+    coupon: offer.coupon ?? null,
   };
 }
 

@@ -164,7 +164,7 @@ describe("runOfferPipeline", () => {
 
     expect(result.captioned).toBe(1);
     expect(offer.caption_status).toBe("ready");
-    expect(String(offer.caption)).toContain("Fone X");
+    expect(String(offer.caption)).toContain("URUBU");
     expect(String(offer.caption)).not.toContain("http");
   });
 

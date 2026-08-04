@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canonicalizeUrl,
+  parseCouponFromText,
   parsePriceToCents,
   parsePricesFromText,
 } from "@/lib/scrapers/normalize";
@@ -91,5 +92,20 @@ describe("parsePricesFromText", () => {
         "Relógio R$ 299 90 R$ 149 90 12x de R$ 12 49 no Pix R$ 140 00",
       ),
     ).toEqual({ priceCents: 14990, originalPriceCents: 29990 });
+  });
+});
+
+describe("parseCouponFromText", () => {
+  it("extracts coupon from text patterns", () => {
+    expect(parseCouponFromText("Use o cupom: PROMO10 no checkout")).toBe("PROMO10");
+    expect(parseCouponFromText("Cupom DESCONTO-20")).toBe("DESCONTO-20");
+    expect(parseCouponFromText("com o código: VALE50OFF")).toBe("VALE50OFF");
+    expect(parseCouponFromText("codigo de desconto BEMVINDO")).toBe("BEMVINDO");
+  });
+
+  it("rejects invalid codes or pure digits", () => {
+    expect(parseCouponFromText("Cupom: 12345")).toBeUndefined();
+    expect(parseCouponFromText("sem cupom aqui")).toBeUndefined();
+    expect(parseCouponFromText("cupom: AB")).toBeUndefined();
   });
 });

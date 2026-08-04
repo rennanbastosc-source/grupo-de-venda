@@ -17,7 +17,7 @@ const DEFAULTS = {
   sleep_start: null as string | null,
   sleep_end: null as string | null,
   message_template:
-    "{{caption}}\n\n🔗 {{affiliate_url}}",
+    "🔥 {{caption}}\n\n{{title}}\n\n{{coupon_line}}\npor {{price_line}}\n{{affiliate_url}}",
   auto_dispatch_enabled: false,
   auto_dispatch_group_ids: [] as string[],
   default_affiliate_provider_id: null as string | null,

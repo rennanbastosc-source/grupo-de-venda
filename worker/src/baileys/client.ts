@@ -283,6 +283,7 @@ export async function startBaileys() {
       // Send-only: não decrypta inbound. Bad MAC em log vinha de LID 1:1
       // (ex. 4041564225646.0), não só de @g.us — por isso ignora user/LID também.
       // Outbound POST /send (sendMessage) não passa por shouldIgnoreJid.
+      generateHighQualityLinkPreview: true,
       shouldIgnoreJid: (jid) =>
         Boolean(
           isJidGroup(jid) ||

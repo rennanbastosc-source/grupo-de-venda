@@ -3,8 +3,9 @@ const DEFAULT_MODEL = "GeMiNi";
 const TIMEOUT_MS = 30_000;
 
 function mockCaption(title: string, price: string): string {
-  const preco = price !== "—" ? ` por ${price}` : "";
-  return `Achado raro: ${title}${preco}! Corre que acaba — quem demora fica de fora!`;
+  const words = title.split(" ").filter(Boolean);
+  const mainWord = words[0]?.toUpperCase() ?? "DISSO";
+  return `QUANDO PRECISAR DE ${mainWord} VC VAI LEMBRAR DO URUBU`;
 }
 
 /**
@@ -44,25 +45,17 @@ export async function generateCaption(input: {
   const model = process.env.NINE_ROUTER_MODEL ?? DEFAULT_MODEL;
   const apiKey = process.env.NINE_ROUTER_API_KEY;
 
-  const price = input.price?.trim() || "—";
-  const hasPrice = price !== "—" && /R\$|\d/.test(price);
-
   const system = [
-    "Você é um copywriter de WhatsApp em PT-BR vendendo ofertas com humor quase cômico.",
-    "Soe como um amigo animado empurrando um achado, não como vendedor chato.",
-    "Máximo ~280 caracteres. Gancho no início que gere curiosidade e desejo.",
-    "Emojis com moderação; no máximo uma pergunta ou brincadeira curta.",
-    "NÃO invente preço, desconto, frete ou estoque.",
-    hasPrice
-      ? `Preço informado: ${price}. Cite esse valor EXATAMENTE uma vez na legenda (mesmos dígitos). Não use outro preço.`
-      : "Preço não informado (—). NÃO mencione valor em R$, desconto % nem frete.",
-    "NÃO inclua links/URLs no texto — o link da oferta é anexado separadamente.",
-    "Responda só com o texto da legenda, sem aspas, sem markdown.",
+    "Você é o Urubu das Promoções, copywriter de achados com humor cotidiano e direto.",
+    "Escreva APENAS UM GANCHO CURTO (1 linha, máximo ~70 caracteres).",
+    "Estilo: MAIÚSCULAS (ALL CAPS ou maioria em caps), tom bem-humorado de dor/desejo cotidiano, sem ser vendedor chato.",
+    "Pode fazer referência sutil à categoria do produto vinda do título.",
+    "PROIBIDO: NÃO mencione preço, NÃO mencione valor em R$, NÃO coloque nome completo/especificações do produto, NÃO inclua URLs/links e NÃO invente cupons.",
+    "Responda só com o texto do gancho, sem aspas, sem markdown.",
   ].join(" ");
 
   const user = [
     `Título: ${input.title}`,
-    `Preço: ${price}`,
     `URL: ${input.url}`,
   ].join("\n");
 
@@ -85,7 +78,7 @@ export async function generateCaption(input: {
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-        temperature: 0.7,
+        temperature: 0.85,
         // provider novo do 9router streama por default — chunks concatenados
         // quebram res.json(); pedimos resposta única explicitamente
         stream: false,
