@@ -6,6 +6,9 @@ import makeWASocket, {
   useMultiFileAuthState,
   makeCacheableSignalKeyStore,
   fetchLatestWaWebVersion,
+  isJidBroadcast,
+  isJidGroup,
+  isJidNewsletter,
   type WASocket,
   type ConnectionState,
 } from "@whiskeysockets/baileys";
@@ -275,6 +278,12 @@ export async function startBaileys() {
       markOnlineOnConnect: false,
       syncFullHistory: false,
       qrTimeout: 60_000,
+      // Send-only: não decrypta inbound de grupo/status/newsletter.
+      // Outbound POST /send (sendMessage) não passa por shouldIgnoreJid.
+      shouldIgnoreJid: (jid) =>
+        Boolean(
+          isJidGroup(jid) || isJidBroadcast(jid) || isJidNewsletter(jid),
+        ),
     });
 
     if (sock) retireSocket(sock);
