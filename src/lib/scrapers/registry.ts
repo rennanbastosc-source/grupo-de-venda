@@ -15,8 +15,10 @@ export function getScraper(source: Exclude<ScrapeSource, "manual">): Scraper {
   return s;
 }
 
+/** Cron/pipeline ativo: MeLi + Amazon. Shopee fora — anti-bot/profile Firecrawl não estabilizou. */
 export function listActiveScrapeSources(): Exclude<ScrapeSource, "manual">[] {
-  return ["mercadolivre", "amazon", "shopee"];
+  // ponytail: reativar "shopee" quando profile scrape v2 deixar de devolver Login Necessário
+  return ["mercadolivre", "amazon"];
 }
 
 export function listAllScrapeSources(): Exclude<ScrapeSource, "manual">[] {

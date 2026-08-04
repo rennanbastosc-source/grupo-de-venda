@@ -62,4 +62,11 @@
 - **Operação se Bad MAC / 502 voltar:** (1) health + log Render (jid/sessão do MAC) (2) se ratchet sujo → logout + re-pair (3) se free matando → plano não-free / menos cold (4) se protocolo PN/LID → patch #2372 em 6.7.24.
 - **Commits de referência:** `31433d7` / `50e65d6` (shouldIgnoreJid), `80015e7` (modal log), anti-flap anterior `f7d3600`.
 
+### scrape-fontes-meli-amazon  ·  2026-08-04
+- **Invariante:** `listActiveScrapeSources()` e cron scrape aceitam só **`mercadolivre` + `amazon`**. Shopee **fora do ativo**.
+- **Por quê:** Production sem `FIRECRAWL_SHOPEE_PROFILE` gerava fail-fast em todo cron; profile Firecrawl `shopee-br` criado, mas scrape v2 com `saveChanges:false` ainda devolve HTML **Login Necessário** / captcha anti-bot. Não vale spam de `scrape_runs` fail.
+- **Código:** `shopee.ts` e enum `shopee` no DB/UI **permanecem** (reativar = devolver `"shopee"` em `listActiveScrapeSources` + `ACTIVE` do cron). Chips de sessão e filtro de ofertas podem ainda listar Shopee.
+- **Locais:** `src/lib/scrapers/registry.ts`, `src/app/api/cron/scrape/route.ts`.
+- **Backlog próximo (plano):** preço MeLi null (~87% captions ready sem `price_cents`) + prompt “cite preço exato”; planilha espelho UX. Docs: `PLANO-shopee-espelho-preco-caption.md`, `ANALISE-planilha-espelho-captions.md`.
+
 

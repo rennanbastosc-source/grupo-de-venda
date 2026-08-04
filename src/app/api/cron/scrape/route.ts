@@ -7,8 +7,8 @@ import { NextResponse, after } from "next/server";
 
 export const maxDuration = 120;
 
-// magalu: enum no DB existe, scraper não — não aceitar no cron
-const ACTIVE = new Set(["mercadolivre", "amazon", "shopee"]);
+// magalu: enum no DB, sem scraper. shopee: scraper existe mas fora do ativo (anti-bot).
+const ACTIVE = new Set(["mercadolivre", "amazon"]);
 
 function serviceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
