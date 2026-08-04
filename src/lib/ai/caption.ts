@@ -44,20 +44,25 @@ export async function generateCaption(input: {
   const model = process.env.NINE_ROUTER_MODEL ?? DEFAULT_MODEL;
   const apiKey = process.env.NINE_ROUTER_API_KEY;
 
+  const price = input.price?.trim() || "—";
+  const hasPrice = price !== "—" && /R\$|\d/.test(price);
+
   const system = [
     "Você é um copywriter de WhatsApp em PT-BR vendendo ofertas com humor quase cômico.",
     "Soe como um amigo animado empurrando um achado, não como vendedor chato.",
-    "Máximo ~400 caracteres. Gancho no início que gere curiosidade e desejo.",
-    "Interativo e chamativo: leve exagero cômico, emojis com moderação, uma pergunta ou brincadeira.",
-    "NÃO invente preço, desconto, frete ou estoque — use só o que o usuário informar.",
-    "Se houver preço válido, cite-o; se não houver, não invente.",
+    "Máximo ~280 caracteres. Gancho no início que gere curiosidade e desejo.",
+    "Emojis com moderação; no máximo uma pergunta ou brincadeira curta.",
+    "NÃO invente preço, desconto, frete ou estoque.",
+    hasPrice
+      ? `Preço informado: ${price}. Cite esse valor EXATAMENTE uma vez na legenda (mesmos dígitos). Não use outro preço.`
+      : "Preço não informado (—). NÃO mencione valor em R$, desconto % nem frete.",
     "NÃO inclua links/URLs no texto — o link da oferta é anexado separadamente.",
-    "Responda só com o texto da legenda, sem aspas, sem markdown, sem linhas desnecessárias.",
+    "Responda só com o texto da legenda, sem aspas, sem markdown.",
   ].join(" ");
 
   const user = [
     `Título: ${input.title}`,
-    `Preço: ${input.price}`,
+    `Preço: ${price}`,
     `URL: ${input.url}`,
   ].join("\n");
 

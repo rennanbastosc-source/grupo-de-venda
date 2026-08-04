@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cleanTitle,
+  enrichMissingPrices,
   extractOffersFromHtml,
   harvestOffers,
   titleFromUrl,
@@ -165,5 +166,46 @@ describe("html-extract", () => {
     expect(offers).toHaveLength(1);
     expect(offers[0].priceCents).toBe(119990);
     expect(offers[0].originalPriceCents).toBe(149900);
+  });
+
+  it("enrichMissingPrices: link Firecrawl sem preço + HTML com R$ perto do path", () => {
+    const html = `
+      <div data-id="x">
+        <a href="/p/MLB999001">Creatina Dark</a>
+        <span class="andes-money-amount__currency-symbol">R$</span>
+        <span class="andes-money-amount__fraction">39</span>
+        <span class="andes-money-amount__cents">90</span>
+      </div>
+    `;
+    const bare = [
+      {
+        title: "Creatina Dark",
+        url: "https://produto.mercadolivre.com.br/p/MLB999001",
+      },
+    ];
+    const enriched = enrichMissingPrices(
+      bare,
+      html,
+      "https://www.mercadolivre.com.br/ofertas",
+    );
+    expect(enriched[0].priceCents).toBe(3990);
+  });
+
+  it("harvestOffers: lista links-only herda preço do HTML via enrich", () => {
+    const html = `
+      <a href="https://produto.mercadolivre.com.br/p/MLB555">Kit Potes</a>
+      <div><span>R$</span><span>89</span><span>00</span></div>
+    `;
+    const offers = harvestOffers(
+      "https://www.mercadolivre.com.br/ofertas",
+      ["https://produto.mercadolivre.com.br/p/MLB555"],
+      html,
+      {
+        hostIncludes: "mercadolivre.com.br",
+        hrefPattern: /\/p\/MLB\d+/i,
+        max: 15,
+      },
+    );
+    expect(offers.some((o) => o.priceCents === 8900)).toBe(true);
   });
 });

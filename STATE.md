@@ -67,6 +67,13 @@
 - **Por quê:** Production sem `FIRECRAWL_SHOPEE_PROFILE` gerava fail-fast em todo cron; profile Firecrawl `shopee-br` criado, mas scrape v2 com `saveChanges:false` ainda devolve HTML **Login Necessário** / captcha anti-bot. Não vale spam de `scrape_runs` fail.
 - **Código:** `shopee.ts` e enum `shopee` no DB/UI **permanecem** (reativar = devolver `"shopee"` em `listActiveScrapeSources` + `ACTIVE` do cron). Chips de sessão e filtro de ofertas podem ainda listar Shopee.
 - **Locais:** `src/lib/scrapers/registry.ts`, `src/app/api/cron/scrape/route.ts`.
-- **Backlog próximo (plano):** preço MeLi null (~87% captions ready sem `price_cents`) + prompt “cite preço exato”; planilha espelho UX. Docs: `PLANO-shopee-espelho-preco-caption.md`, `ANALISE-planilha-espelho-captions.md`.
+- **Backlog:** planilha espelho UX (`mirrorToSheets`). Docs: `PLANO-shopee-espelho-preco-caption.md`, `ANALISE-planilha-espelho-captions.md`.
+
+### caption-preco-meli  ·  2026-08-04
+- **Problema:** em prod ~87% das captions MeLi ready com `price_cents` null (links Firecrawl sem preço no harvest); quando DB tinha preço e caption citava R$, batia (não era LLM trocando número).
+- **Mitigações as-built:**
+  1. `enrichMissingPrices` + janela vizinha 1400 chars em `html-extract.ts` — re-varre HTML perto do href/path e preenche `priceCents` faltante no `harvestOffers`.
+  2. Prompt `caption.ts`: ~280 chars; se preço válido → cite **exatamente**; se `—` → proíbe inventar R$.
+- **Limitação:** ofertas **já** no DB com null não se curam sozinhas — precisam re-scrape (upsert atualiza preço) e/ou re-caption. Captions antigas sem preço permanecem até o pipeline regerar.
 
 

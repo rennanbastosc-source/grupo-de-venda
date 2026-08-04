@@ -43,6 +43,34 @@ describe("generateCaption", () => {
     expect(url).toBe("http://router.test/v1/chat/completions");
     const body = JSON.parse(String(init.body));
     expect(body.model).toBe("GeMiNi");
+    const system = body.messages[0].content as string;
+    expect(system).toMatch(/EXATAMENTE/);
+    expect(system).toContain("R$ 10,00");
+    expect(system).toMatch(/280/);
+  });
+
+  it("sem preço válido: system proíbe inventar R$", async () => {
+    vi.stubEnv("SCRAPE_MOCK", "");
+    vi.stubEnv("NINE_ROUTER_BASE_URL", "http://router.test/v1");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: "Achado sem preço na copy" } }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { generateCaption } = await import("@/lib/ai/caption");
+    await generateCaption({
+      title: "Produto X",
+      price: "—",
+      url: "https://ex.com/x",
+    });
+    const body = JSON.parse(
+      String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body),
+    );
+    const system = body.messages[0].content as string;
+    expect(system).toMatch(/NÃO mencione valor em R\$/);
+    expect(system).not.toMatch(/EXATAMENTE/);
   });
 });
 

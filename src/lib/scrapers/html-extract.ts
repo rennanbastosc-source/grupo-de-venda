@@ -16,11 +16,69 @@ function isWeakTitle(title: string): boolean {
   return !t || /^[A-Z0-9]{10}$/i.test(t) || /^[\d\s-_]+$/.test(t) || t.startsWith("http");
 }
 
-/** Janela HTML após o anchor: até o próximo `<a` ou ~600 chars (preço em DIV separado, ex: ML/Shopee). */
-function neighborWindow(html: string, start: number, limit = 600): string {
+/** Janela HTML após o anchor: até o próximo `<a` ou ~limit chars (preço em DIV separado, ex: ML). */
+function neighborWindow(html: string, start: number, limit = 1400): string {
   const slice = html.slice(start, start + limit);
   const nextA = slice.search(/<a\b/i);
-  return nextA >= 0 ? slice.slice(0, nextA) : slice;
+  // Se o próximo <a> vem cedo demais (<80), o preço costuma estar DEPOIS do card
+  // vizinho — não corta; senão corta no próximo link de produto.
+  if (nextA >= 0 && nextA >= 80) return slice.slice(0, nextA);
+  return slice;
+}
+
+/** Href variants para achar o card no HTML (links Firecrawl vs href relativo). */
+function hrefSearchKeys(url: string, baseUrl: string): string[] {
+  const keys: string[] = [url];
+  try {
+    const u = new URL(url, baseUrl);
+    keys.push(u.pathname);
+    keys.push(`${u.origin}${u.pathname}`);
+    // ML: /p/MLB… e path com MLB-… no slug
+    const mlb = u.pathname.match(/MLB-?\d+/i);
+    if (mlb) keys.push(mlb[0]);
+  } catch {
+    /* ignore */
+  }
+  return [...new Set(keys.filter((k) => k.length > 3))];
+}
+
+/**
+ * Ofertas vindas só da lista `links` do Firecrawl chegam sem priceCents.
+ * Re-varre o HTML em torno do href (janela maior) e preenche preço faltante.
+ */
+export function enrichMissingPrices(
+  offers: RawOffer[],
+  html: string | undefined,
+  baseUrl: string,
+): RawOffer[] {
+  if (!html || offers.length === 0) return offers;
+  return offers.map((o) => {
+    if (o.priceCents != null) return o;
+    let best: { priceCents?: number; originalPriceCents?: number } = {};
+    for (const key of hrefSearchKeys(o.url, baseUrl)) {
+      let from = 0;
+      // até 3 ocorrências do mesmo href (título + preço + imagem)
+      for (let n = 0; n < 3; n++) {
+        const pos = html.indexOf(key, from);
+        if (pos < 0) break;
+        const start = Math.max(0, pos - 120);
+        const windowHtml = html.slice(start, pos + 1600);
+        const parsed = parsePricesFromText(stripTags(windowHtml));
+        if (parsed.priceCents != null) {
+          best = parsed;
+          break;
+        }
+        from = pos + key.length;
+      }
+      if (best.priceCents != null) break;
+    }
+    if (best.priceCents == null) return o;
+    return {
+      ...o,
+      priceCents: best.priceCents,
+      originalPriceCents: best.originalPriceCents ?? o.originalPriceCents,
+    };
+  });
 }
 
 /** Lightweight HTML link harvest — no cheerio. */
@@ -161,5 +219,6 @@ export function harvestOffers(
     byUrl.set(href, { title: cleanTitle("", href), url: href });
   }
 
-  return [...byUrl.values()].slice(0, max);
+  // Links-only do Firecrawl chegam sem preço; re-varre HTML (MeLi ~87% null em prod).
+  return enrichMissingPrices([...byUrl.values()], html, baseUrl).slice(0, max);
 }
