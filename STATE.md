@@ -43,4 +43,23 @@
 - Modelos: `wa_sent_jobs` (PK job_id); `dispatch_jobs` + `attempts`/`claimed_at`; `app_settings` + `daily_offer_cap`; `wa_connection_events` (append-only, RLS select); índice `dispatch_jobs_one_sent_per_day` recriado em Fortaleza. Drops: `wa_session` (schema morto), `wa_groups.daily_limit`, `offers.sheets_row`/`sheets_synced_at`.
 - Decisões: pacing do burst no app serverless (`maxDuration=300`, exige Fluid Compute no Hobby; plano B documentado: pacing no worker); `rest()` PostgREST extraído para `worker/src/db.ts` e compartilhado (auth cifrada, dedupe, eventos); batches do pipeline derivados de `daily_offer_cap` (clamp 1–25) com leitura única de settings; eventos de conexão em ponto único (`setSessionStatus`), fire-and-forget com guardas ci/env; smoke E2E Playwright (`npm run test:e2e`) com envs neutralizadas — worker cortado no gate de sessão, sem tocar banco real; migrations 011–015 devem estar aplicadas em produção ANTES do merge (AGENTS §5).
 
+### worker-baileys-send-only-bad-mac  ·  2026-08-04
+- **Problema as-built:** `Session error: Error: Bad MAC` (libsignal `verifyMAC`) no log do Render — falha de **decrypt inbound**, não de `POST /send`. Storm de Bad MAC + free Render → `502` no health; painel mostra `Worker inacessível` e `Connection was lost (code=408)`.
+- **Invariantes (send-only):**
+  - `makeWASocket` em `worker/src/baileys/client.ts` usa `shouldIgnoreJid` que retorna true para `isJidGroup` + `isJidBroadcast` + `isJidNewsletter` + `isJidUser` + `isLidUser` — **não** decrypta inbound de grupo/status/newsletter/DM/LID.
+  - Outbound `socket.sendMessage` em `POST /send` (`worker/src/http/server.ts`) **não** consulta `shouldIgnoreJid` — disparo a `@g.us` continua válido.
+  - 1 processo / 1 `sock` / `render.yaml` `numInstances: 1` no mesmo `wa_session_keys` (2 writers = last-write-wins e Bad MAC).
+  - Gate de sessão = `creds.account` (não `me`); anti-flap: `timedOut` **com** account → `disconnected` + backoff (não `waiting_pairing`).
+  - Logout / `loggedOut` → `clearAuth` = `DELETE` em **toda** `wa_session_keys` (creds + keys Signal).
+- **Nuances que valem o preço:**
+  1. **Ignore só `@g.us` não bastou** — log real tinha sessão `4041564225646.0` (LID 1:1). Send-only de produto precisa ignorar **user + lid** também.
+  2. **`shouldIgnoreJid` não conserta ratchet podre** — se Bad MAC volta após deploy do ignore, ordem: deploy código → **Logout** no `/dashboard/bot` (ou `POST /session/logout`) → re-pair. Preferir logout oficial a apagar só `session:%` no SQL.
+  3. **Versão:** lock `@whiskeysockets/baileys` **6.7.24** (`package.json` `^6.7.18`). PR WhiskeySockets **#2372** (lock canônico PN/LID, não apagar PN em `migrateSession`, grace de prekey) ainda **OPEN** — **não** está no npm 6.7.x nem v7 RC estável; se voltar Bad MAC estrutural, patch em 6.7.24 (não pular v7 cego).
+  4. **Auth store:** `makeCacheableSignalKeyStore` (cache ~5min) + `keys.set` REST em lotes 200 (`on_conflict=id`, merge-duplicates). `saveCreds().catch(() => {})` ainda engole falha de rede — divergência mem/DB no kill do free continua risco residual.
+  5. **Logger Baileys silent** — Bad MAC aparece no **stderr do libsignal**, não no pino do app; `/health` rico (`sessionStatus`, `lastError`, `uptimeSec`) e `wa_connection_events` **não** gravam stack Bad MAC.
+  6. **UI diagnóstico:** `/dashboard/bot` → card Histórico → **Ver log de erros** (modal em `ConnectionHistoryCard.tsx`) lê `GET /api/bot/events` = `wa_connection_events` (status + `detail`/`lastError`). Útil p/ queda `code=408`, logged_out, etc. — **não** substitui log Render p/ Bad MAC.
+  7. **Free Render:** deploy `live` ≠ health `200` imediato; cold start/502 intermitente é normal. Push em `worker/` redeploya worker; push só em `src/` (Vercel) **não**.
+- **Operação se Bad MAC / 502 voltar:** (1) health + log Render (jid/sessão do MAC) (2) se ratchet sujo → logout + re-pair (3) se free matando → plano não-free / menos cold (4) se protocolo PN/LID → patch #2372 em 6.7.24.
+- **Commits de referência:** `31433d7` / `50e65d6` (shouldIgnoreJid), `80015e7` (modal log), anti-flap anterior `f7d3600`.
+
 
